@@ -1,0 +1,10 @@
+# Build outputs
+build/
+
+# Waf build metadata
+.lock-waf*
+.waf*-*
+.wafpickle-*
+
+# Node dependencies (if installed)
+node_modules/

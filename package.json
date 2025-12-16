@@ -1,0 +1,38 @@
+{
+  "name": "brutalism",
+  "author": "MakeAwesomeHappen",
+  "version": "1.0.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "brutalism",
+    "uuid": "469c06b3-67cf-4135-9e4f-15ab0900ddbe",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "chalk",
+      "diorite",
+      "emery",
+      "flint"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "messageKeys": [
+      "dummy"
+    ],
+    "resources": {
+      "media": [
+        {
+          "type": "font",
+          "name": "FONT_JERSEY_50",
+          "file": "fonts/Jersey10-Regular.ttf",
+          "size": 50
+        }
+      ]
+    }
+  }
+}
