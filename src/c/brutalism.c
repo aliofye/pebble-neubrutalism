@@ -5,8 +5,47 @@ static Window *s_window;
 static Layer *s_canvas_layer;
 static char s_time_buffer[6];
 static int s_current_hour;
+static GPath *s_polygon_200;
 
 static const int16_t ORANGE_STROKE = 3;
+
+static const GPathInfo s_polygon_info_200 = {
+  .num_points = 13,
+  .points = (GPoint[]) {
+    {100, 12},
+    {190, 12},
+    {190, 45},
+    {187, 45},
+    {187, 48},
+    {184, 48},
+    {184, 51},
+    {181, 51},
+    {181, 55},
+    {175, 55},
+    {175, 45},
+    {175, 45},
+    {100, 45},
+  },
+};
+
+static void prv_draw_axis_aligned_outline(GContext *ctx, const GPoint *points, size_t count, int16_t stroke) {
+  // Draw straight-edged outline by filling thin rects along each axis-aligned segment
+  for (size_t i = 0; i < count; i++) {
+    GPoint p1 = points[i];
+    GPoint p2 = points[(i + 1) % count];
+    if (p1.y == p2.y) {
+      int16_t x0 = p1.x < p2.x ? p1.x : p2.x;
+      int16_t x1 = p1.x < p2.x ? p2.x : p1.x;
+      GRect seg = GRect(x0 - stroke / 2, p1.y - stroke / 2, (x1 - x0) + stroke, stroke);
+      graphics_fill_rect(ctx, seg, 0, GCornerNone);
+    } else if (p1.x == p2.x) {
+      int16_t y0 = p1.y < p2.y ? p1.y : p2.y;
+      int16_t y1 = p1.y < p2.y ? p2.y : p1.y;
+      GRect seg = GRect(p1.x - stroke / 2, y0 - stroke / 2, stroke, (y1 - y0) + stroke);
+      graphics_fill_rect(ctx, seg, 0, GCornerNone);
+    }
+  }
+}
 
 typedef struct {
   const char *rows[10];
@@ -233,6 +272,14 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
   graphics_context_set_fill_color(ctx, GColorOrange);
   graphics_fill_rect(ctx, inner_rect, 0, GCornerNone);
 
+  // Polygon for 200px wide canvases
+  if (w == 200 && s_polygon_200) {
+    graphics_context_set_fill_color(ctx, GColorChromeYellow);
+    gpath_draw_filled(ctx, s_polygon_200);
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    prv_draw_axis_aligned_outline(ctx, s_polygon_info_200.points, s_polygon_info_200.num_points, 4);
+  }
+
   const size_t time_len = strlen(s_time_buffer);
 
   int16_t pix_w = bounds.size.w / 40;
@@ -287,6 +334,10 @@ static void prv_window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
+  if (bounds.size.w == 200) {
+    s_polygon_200 = gpath_create(&s_polygon_info_200);
+  }
+
   s_canvas_layer = layer_create(bounds);
   layer_set_update_proc(s_canvas_layer, prv_canvas_update);
   layer_add_child(window_layer, s_canvas_layer);
@@ -295,6 +346,10 @@ static void prv_window_load(Window *window) {
 }
 
 static void prv_window_unload(Window *window) {
+  if (s_polygon_200) {
+    gpath_destroy(s_polygon_200);
+    s_polygon_200 = NULL;
+  }
   layer_destroy(s_canvas_layer);
 }
 
