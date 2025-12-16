@@ -31,6 +31,24 @@
           "name": "FONT_JERSEY_50",
           "file": "fonts/Jersey10-Regular.ttf",
           "size": 50
+        },
+        {
+          "type": "font",
+          "name": "FONT_JERSEY_40",
+          "file": "fonts/Jersey10-Regular.ttf",
+          "size": 40
+        },
+        {
+          "type": "font",
+          "name": "FONT_JERSEY_38",
+          "file": "fonts/Jersey10-Regular.ttf",
+          "size": 38
+        },
+        {
+          "type": "font",
+          "name": "FONT_JERSEY_25",
+          "file": "fonts/Jersey10-Regular.ttf",
+          "size": 25
         }
       ]
     }

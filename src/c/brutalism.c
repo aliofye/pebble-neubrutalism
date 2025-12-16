@@ -1,9 +1,13 @@
+#include <ctype.h>
 #include <pebble.h>
 #include <string.h>
 
 static Window *s_window;
 static Layer *s_canvas_layer;
+static TextLayer *s_date_layer;
+static GFont s_date_font;
 static char s_time_buffer[6];
+static char s_date_buffer[9];
 static int s_current_hour;
 static GPath *s_polygon_200;
 static GPath *s_polygon_144;
@@ -245,6 +249,14 @@ static void prv_update_time(void) {
     snprintf(s_time_buffer, sizeof(s_time_buffer), "%02d:%02d", hour, minute);
   }
 
+  strftime(s_date_buffer, sizeof(s_date_buffer), "%b %d", tick_time);
+  for (size_t i = 0; s_date_buffer[i]; i++) {
+    s_date_buffer[i] = (char)toupper((unsigned char)s_date_buffer[i]);
+  }
+  if (s_date_layer) {
+    text_layer_set_text(s_date_layer, s_date_buffer);
+  }
+
   if (s_canvas_layer) {
     layer_mark_dirty(s_canvas_layer);
   }
@@ -369,6 +381,22 @@ static void prv_window_load(Window *window) {
   layer_set_update_proc(s_canvas_layer, prv_canvas_update);
   layer_add_child(window_layer, s_canvas_layer);
 
+  const bool is_200 = bounds.size.w == 200;
+  const int16_t center_x = is_200 ? 145 : 105;
+  const int16_t center_y = is_200 ? 20 : 17;
+  const int16_t date_w = is_200 ? 90 : 72;
+  const int16_t date_h = is_200 ? 40 : 28;
+  s_date_layer = text_layer_create(GRect(center_x - date_w / 2, center_y - date_h / 2, date_w, date_h));
+  text_layer_set_background_color(s_date_layer, GColorClear);
+  text_layer_set_text_color(s_date_layer, GColorBlack);
+  text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
+  const uint32_t font_res = is_200 ? RESOURCE_ID_FONT_JERSEY_38 : RESOURCE_ID_FONT_JERSEY_25;
+  if (!s_date_font) {
+    s_date_font = fonts_load_custom_font(resource_get_handle(font_res));
+  }
+  text_layer_set_font(s_date_layer, s_date_font);
+  layer_add_child(window_layer, text_layer_get_layer(s_date_layer));
+
   prv_update_time();
 }
 
@@ -381,6 +409,12 @@ static void prv_window_unload(Window *window) {
     gpath_destroy(s_polygon_144);
     s_polygon_144 = NULL;
   }
+  if (s_date_font) {
+    fonts_unload_custom_font(s_date_font);
+    s_date_font = NULL;
+  }
+  text_layer_destroy(s_date_layer);
+  s_date_layer = NULL;
   layer_destroy(s_canvas_layer);
 }
 
