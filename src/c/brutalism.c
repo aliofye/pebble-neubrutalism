@@ -6,6 +6,7 @@ static Layer *s_canvas_layer;
 static char s_time_buffer[6];
 static int s_current_hour;
 static GPath *s_polygon_200;
+static GPath *s_polygon_144;
 
 static const int16_t ORANGE_STROKE = 3;
 
@@ -25,6 +26,25 @@ static const GPathInfo s_polygon_info_200 = {
     {175, 45},
     {175, 45},
     {100, 45},
+  },
+};
+
+static const GPathInfo s_polygon_info_144 = {
+  .num_points = 13,
+  .points = (GPoint[]) {
+    {72, 9},
+    {137, 9},
+    {137, 33},
+    {135, 33},
+    {135, 35},
+    {132, 35},
+    {132, 38},
+    {130, 38},
+    {130, 41},
+    {126, 41},
+    {126, 33},
+    {126, 33},
+    {72, 33},
   },
 };
 
@@ -278,6 +298,11 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     gpath_draw_filled(ctx, s_polygon_200);
     graphics_context_set_fill_color(ctx, GColorBlack);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_200.points, s_polygon_info_200.num_points, 4);
+  } else if (s_polygon_144) {
+    graphics_context_set_fill_color(ctx, GColorChromeYellow);
+    gpath_draw_filled(ctx, s_polygon_144);
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    prv_draw_axis_aligned_outline(ctx, s_polygon_info_144.points, s_polygon_info_144.num_points, 4);
   }
 
   const size_t time_len = strlen(s_time_buffer);
@@ -336,6 +361,8 @@ static void prv_window_load(Window *window) {
 
   if (bounds.size.w == 200) {
     s_polygon_200 = gpath_create(&s_polygon_info_200);
+  } else {
+    s_polygon_144 = gpath_create(&s_polygon_info_144);
   }
 
   s_canvas_layer = layer_create(bounds);
@@ -349,6 +376,10 @@ static void prv_window_unload(Window *window) {
   if (s_polygon_200) {
     gpath_destroy(s_polygon_200);
     s_polygon_200 = NULL;
+  }
+  if (s_polygon_144) {
+    gpath_destroy(s_polygon_144);
+    s_polygon_144 = NULL;
   }
   layer_destroy(s_canvas_layer);
 }
