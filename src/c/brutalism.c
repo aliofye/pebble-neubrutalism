@@ -11,6 +11,7 @@ static char s_date_buffer[9];
 static int s_current_hour;
 static GPath *s_polygon_200;
 static GPath *s_polygon_144;
+static int s_battery_percent = 100;
 
 static const int16_t ORANGE_STROKE = 3;
 
@@ -262,6 +263,13 @@ static void prv_update_time(void) {
   }
 }
 
+static void prv_battery_handler(BatteryChargeState state) {
+  s_battery_percent = state.charge_percent;
+  if (s_canvas_layer) {
+    layer_mark_dirty(s_canvas_layer);
+  }
+}
+
 static GRect prv_orange_rect_for_bounds(GRect bounds) {
   const int16_t w = bounds.size.w;
   const int16_t h = bounds.size.h;
@@ -310,6 +318,52 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     gpath_draw_filled(ctx, s_polygon_200);
     graphics_context_set_fill_color(ctx, GColorBlack);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_200.points, s_polygon_info_200.num_points, 4);
+
+    // Base black strip behind the pastel rectangle
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_fill_rect(ctx, GRect(26, 170, 160, 29), 0, GCornerNone);
+
+    // Pastel yellow box with the same bold outline treatment as the orange rect
+    GRect pastel_rect = GRect(22, 150, 155, 45);
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_fill_rect(ctx, pastel_rect, 0, GCornerNone);
+
+    const int16_t pastel_stroke = stroke * 2;
+    GRect pastel_inner = pastel_rect;
+    pastel_inner.origin.x += pastel_stroke;
+    pastel_inner.origin.y += pastel_stroke;
+    pastel_inner.size.w -= 2 * pastel_stroke;
+    pastel_inner.size.h -= 2 * pastel_stroke;
+    graphics_context_set_fill_color(ctx, GColorPastelYellow);
+    graphics_fill_rect(ctx, pastel_inner, 0, GCornerNone);
+
+    GRect pastel_core = pastel_inner;
+    pastel_core.origin.x += 4;
+    pastel_core.origin.y += 4;
+    pastel_core.size.w -= 8;
+    pastel_core.size.h -= 8;
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_fill_rect(ctx, pastel_core, 0, GCornerNone);
+
+    GRect bar_bounds = pastel_core;
+    bar_bounds.origin.x += 4;
+    bar_bounds.origin.y += 4;
+    bar_bounds.size.w -= 8;
+    bar_bounds.size.h -= 8;
+    GRect bar_rect = bar_bounds;
+    bar_rect.size.w = (int16_t)((bar_bounds.size.w * s_battery_percent) / 100);
+    graphics_context_set_fill_color(ctx, GColorLavenderIndigo);
+    graphics_fill_rect(ctx, bar_rect, 0, GCornerNone);
+
+    // Decorative right-angled outline
+    const GPoint deco_points[] = {
+      {150, 140},
+      {186, 140},
+      {186, 215},
+      {100, 215},
+    };
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    prv_draw_axis_aligned_outline(ctx, deco_points, ARRAY_LENGTH(deco_points), 4);
   } else if (s_polygon_144) {
     graphics_context_set_fill_color(ctx, GColorChromeYellow);
     gpath_draw_filled(ctx, s_polygon_144);
@@ -428,10 +482,14 @@ static void prv_init(void) {
   const bool animated = true;
   window_stack_push(s_window, animated);
 
+  BatteryChargeState state = battery_state_service_peek();
+  s_battery_percent = state.charge_percent;
+  battery_state_service_subscribe(prv_battery_handler);
   tick_timer_service_subscribe(MINUTE_UNIT, prv_tick_handler);
 }
 
 static void prv_deinit(void) {
+  battery_state_service_unsubscribe();
   tick_timer_service_unsubscribe();
   window_destroy(s_window);
 }
