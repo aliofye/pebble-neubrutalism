@@ -359,8 +359,8 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     const GPoint deco_points[] = {
       {150, 140},
       {186, 140},
-      {186, 215},
-      {100, 215},
+      {186, 213},
+      {100, 213},
     };
     graphics_context_set_fill_color(ctx, GColorBlack);
     prv_draw_axis_aligned_outline(ctx, deco_points, ARRAY_LENGTH(deco_points), 4);
@@ -369,6 +369,52 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     gpath_draw_filled(ctx, s_polygon_144);
     graphics_context_set_fill_color(ctx, GColorBlack);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_144.points, s_polygon_info_144.num_points, 4);
+
+    // Base black strip behind the pastel rectangle (scaled for 144x168)
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_fill_rect(ctx, GRect(19, 128, 115, 24), 0, GCornerNone);
+
+    // Scaled pastel yellow box with the same outline treatment
+    GRect pastel_rect = GRect(16, 111, 112, 38);
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_fill_rect(ctx, pastel_rect, 0, GCornerNone);
+
+    const int16_t pastel_stroke = stroke * 2;
+    GRect pastel_inner = pastel_rect;
+    pastel_inner.origin.x += pastel_stroke;
+    pastel_inner.origin.y += pastel_stroke;
+    pastel_inner.size.w -= 2 * pastel_stroke;
+    pastel_inner.size.h -= 2 * pastel_stroke;
+    graphics_context_set_fill_color(ctx, GColorPastelYellow);
+    graphics_fill_rect(ctx, pastel_inner, 0, GCornerNone);
+
+    GRect pastel_core = pastel_inner;
+    pastel_core.origin.x += 3;
+    pastel_core.origin.y += 3;
+    pastel_core.size.w -= 6;
+    pastel_core.size.h -= 6;
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_fill_rect(ctx, pastel_core, 0, GCornerNone);
+
+    GRect bar_bounds = pastel_core;
+    bar_bounds.origin.x += 3;
+    bar_bounds.origin.y += 3;
+    bar_bounds.size.w -= 6;
+    bar_bounds.size.h -= 6;
+    GRect bar_rect = bar_bounds;
+    bar_rect.size.w = (int16_t)((bar_bounds.size.w * s_battery_percent) / 100);
+    graphics_context_set_fill_color(ctx, GColorLavenderIndigo);
+    graphics_fill_rect(ctx, bar_rect, 0, GCornerNone);
+
+    // Decorative right-angled outline scaled for 144x168
+    const GPoint deco_points[] = {
+      {108, 103},
+      {134, 103},
+      {134, 160},
+      {72, 160},
+    };
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    prv_draw_axis_aligned_outline(ctx, deco_points, ARRAY_LENGTH(deco_points), 3);
   }
 
   const size_t time_len = strlen(s_time_buffer);
