@@ -1,12 +1,12 @@
 {
-  "name": "brutalism",
-  "author": "MakeAwesomeHappen",
+  "name": "neubrutalism",
+  "author": "Yorks0n",
   "version": "1.0.0",
-  "keywords": ["pebble-app"],
+  "keywords": ["brutalism","neubrutalism","brutal"],
   "private": true,
   "dependencies": {},
   "pebble": {
-    "displayName": "brutalism",
+    "displayName": "neubrutalism",
     "uuid": "469c06b3-67cf-4135-9e4f-15ab0900ddbe",
     "sdkVersion": "3",
     "enableMultiJS": true,
