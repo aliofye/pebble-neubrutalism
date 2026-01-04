@@ -6,6 +6,15 @@ alwaysApply: true
 
 This is a Pebble smartwatch application written in C using the Pebble SDK.
 
+## Watchface Design Notes
+
+- Background: `GColorPastelYellow` window fill.
+- Core orange block: centered rect from `prv_orange_rect_for_bounds` with outer black border (stroke 3) and chrome yellow polygon accent (`s_polygon_200` / `s_polygon_144`) outlined with axis-aligned fill.
+- Time/date: pixel-glyph time rendered in black inside the orange block; date text layer centered near top using Jersey font (38 for 200px, 25 for 144px).
+- Battery strip (200px): black base `GRect(26,170,160,29)` under a pastel-yellow framed module at `GRect(22,150,155,45)` with doubled stroke; inner black core inset 4px; lavender bar inset another 4px, width = battery %.
+- Battery strip (144x168-ish): scaled positions — black base `GRect(19,128,115,24)`; pastel module `GRect(16,111,112,38)` with doubled stroke; inner black core inset ~3px; lavender bar inset another ~3px, width = battery %.
+- Decorative outline: axis-aligned outline using `prv_draw_axis_aligned_outline`. 200px points: (150,140) → (186,140) → (186,215) → (100,215). 144px points: (108,103) → (134,103) → (134,166) → (72,166). Stroke 4 on 200px, 3 on 144px.
+
 ## Supported Platforms
 
 The app targets multiple Pebble watch models:
