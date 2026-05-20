@@ -4,10 +4,12 @@
 
 static Window *s_window;
 static Layer *s_canvas_layer;
-static TextLayer *s_date_layer;
+static TextLayer *s_month_layer;
+static TextLayer *s_day_layer;
 static GFont s_date_font;
 static char s_time_buffer[6];
-static char s_date_buffer[9];
+static char s_month_buffer[5];
+static char s_day_buffer[3];
 static int s_current_hour;
 static GPath *s_polygon_200;
 static GPath *s_polygon_144;
@@ -250,12 +252,17 @@ static void prv_update_time(void) {
     snprintf(s_time_buffer, sizeof(s_time_buffer), "%02d:%02d", hour, minute);
   }
 
-  strftime(s_date_buffer, sizeof(s_date_buffer), "%b %d", tick_time);
-  for (size_t i = 0; s_date_buffer[i]; i++) {
-    s_date_buffer[i] = (char)toupper((unsigned char)s_date_buffer[i]);
+  strftime(s_month_buffer, sizeof(s_month_buffer), "%b", tick_time);
+  for (size_t i = 0; s_month_buffer[i]; i++) {
+    s_month_buffer[i] = (char)toupper((unsigned char)s_month_buffer[i]);
   }
-  if (s_date_layer) {
-    text_layer_set_text(s_date_layer, s_date_buffer);
+  strftime(s_day_buffer, sizeof(s_day_buffer), "%d", tick_time);
+
+  if (s_month_layer) {
+    text_layer_set_text(s_month_layer, s_month_buffer);
+  }
+  if (s_day_layer) {
+    text_layer_set_text(s_day_layer, s_day_buffer);
   }
 
   if (s_canvas_layer) {
@@ -484,18 +491,33 @@ static void prv_window_load(Window *window) {
   const bool is_200 = bounds.size.w == 200;
   const int16_t center_x = is_200 ? 145 : 105;
   const int16_t center_y = is_200 ? 20 : 17;
-  const int16_t date_w = is_200 ? 90 : 72;
+  const int16_t date_w = is_200 ? 104 : 72;
   const int16_t date_h = is_200 ? 40 : 28;
-  s_date_layer = text_layer_create(GRect(center_x - date_w / 2, center_y - date_h / 2, date_w, date_h));
-  text_layer_set_background_color(s_date_layer, GColorClear);
-  text_layer_set_text_color(s_date_layer, GColorBlack);
-  text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
+  const int16_t date_gap = is_200 ? 4 : 3;
+  const int16_t month_w = is_200 ? 62 : 45;
+  const int16_t day_w = date_w - month_w - date_gap;
+  const int16_t date_x = center_x - date_w / 2 - (is_200 ? 0 : 2);
+  const int16_t date_y = center_y - date_h / 2;
+  const int16_t month_x = date_x + (is_200 ? 2 : 0);
+
+  s_month_layer = text_layer_create(GRect(month_x, date_y, month_w, date_h));
+  text_layer_set_background_color(s_month_layer, GColorClear);
+  text_layer_set_text_color(s_month_layer, GColorBlack);
+  text_layer_set_text_alignment(s_month_layer, GTextAlignmentRight);
+
+  s_day_layer = text_layer_create(GRect(date_x + month_w + date_gap, date_y, day_w, date_h));
+  text_layer_set_background_color(s_day_layer, GColorClear);
+  text_layer_set_text_color(s_day_layer, GColorBlack);
+  text_layer_set_text_alignment(s_day_layer, GTextAlignmentLeft);
+
   const uint32_t font_res = is_200 ? RESOURCE_ID_FONT_JERSEY_38 : RESOURCE_ID_FONT_JERSEY_25;
   if (!s_date_font) {
     s_date_font = fonts_load_custom_font(resource_get_handle(font_res));
   }
-  text_layer_set_font(s_date_layer, s_date_font);
-  layer_add_child(window_layer, text_layer_get_layer(s_date_layer));
+  text_layer_set_font(s_month_layer, s_date_font);
+  text_layer_set_font(s_day_layer, s_date_font);
+  layer_add_child(window_layer, text_layer_get_layer(s_month_layer));
+  layer_add_child(window_layer, text_layer_get_layer(s_day_layer));
 
   prv_update_time();
 }
@@ -513,8 +535,10 @@ static void prv_window_unload(Window *window) {
     fonts_unload_custom_font(s_date_font);
     s_date_font = NULL;
   }
-  text_layer_destroy(s_date_layer);
-  s_date_layer = NULL;
+  text_layer_destroy(s_month_layer);
+  s_month_layer = NULL;
+  text_layer_destroy(s_day_layer);
+  s_day_layer = NULL;
   layer_destroy(s_canvas_layer);
 }
 
