@@ -15,10 +15,62 @@ static GPath *s_polygon_200;
 static GPath *s_polygon_144;
 static int s_battery_percent = 100;
 static bool s_use_24_hour;
+static uint8_t s_color_theme;
 
 enum {
   PERSIST_KEY_TIME_FORMAT = 1,
+  PERSIST_KEY_COLOR_THEME = 2,
 };
+
+enum {
+  THEME_NEUBRUTALISM = 0,
+  THEME_GAME_BOY_GREEN,
+  THEME_OCEAN_BLUE,
+  THEME_AMBER_LCD,
+  THEME_MONOCHROME,
+  THEME_PURPLE_PIXEL,
+  THEME_COUNT,
+};
+
+typedef struct {
+  GColor background;
+  GColor body;
+  GColor accent;
+  GColor battery_frame;
+  GColor battery_bar;
+  GColor ink;
+} ColorTheme;
+
+static const ColorTheme s_color_themes[THEME_COUNT] = {
+  [THEME_NEUBRUTALISM] = {
+    GColorPastelYellow, GColorOrange, GColorChromeYellow,
+    GColorPastelYellow, GColorLavenderIndigo, GColorBlack,
+  },
+  [THEME_GAME_BOY_GREEN] = {
+    GColorLightGray, GColorMayGreen, GColorMintGreen,
+    GColorLightGray, GColorDarkGreen, GColorBlack,
+  },
+  [THEME_OCEAN_BLUE] = {
+    GColorCeleste, GColorPictonBlue, GColorElectricBlue,
+    GColorCeleste, GColorCobaltBlue, GColorBlack,
+  },
+  [THEME_AMBER_LCD] = {
+    GColorPastelYellow, GColorChromeYellow, GColorIcterine,
+    GColorPastelYellow, GColorOrange, GColorBlack,
+  },
+  [THEME_MONOCHROME] = {
+    GColorLightGray, GColorWhite, GColorWhite,
+    GColorLightGray, GColorDarkGray, GColorBlack,
+  },
+  [THEME_PURPLE_PIXEL] = {
+    GColorRichBrilliantLavender, GColorLavenderIndigo, GColorBabyBlueEyes,
+    GColorRichBrilliantLavender, GColorIndigo, GColorBlack,
+  },
+};
+
+static const ColorTheme *prv_theme(void) {
+  return &s_color_themes[s_color_theme < THEME_COUNT ? s_color_theme : THEME_NEUBRUTALISM];
+}
 
 static const int16_t ORANGE_STROKE = 3;
 
@@ -299,6 +351,7 @@ static void prv_send_settings(void) {
   }
 
   dict_write_uint8(iter, MESSAGE_KEY_TIME_FORMAT, s_use_24_hour ? 1 : 0);
+  dict_write_uint8(iter, MESSAGE_KEY_COLOR_THEME, s_color_theme);
   result = app_message_outbox_send();
   if (result != APP_MSG_OK) {
     APP_LOG(APP_LOG_LEVEL_WARNING, "Could not send settings sync: %d", result);
@@ -313,6 +366,18 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
     prv_update_time();
   }
 
+  Tuple *theme_tuple = dict_find(iter, MESSAGE_KEY_COLOR_THEME);
+  if (theme_tuple) {
+    uint8_t theme = (uint8_t)theme_tuple->value->int32;
+    if (theme < THEME_COUNT) {
+      s_color_theme = theme;
+      persist_write_int(PERSIST_KEY_COLOR_THEME, s_color_theme);
+      window_set_background_color(s_window, prv_theme()->background);
+      text_layer_set_text_color(s_date_layer, prv_theme()->ink);
+      layer_mark_dirty(s_canvas_layer);
+    }
+  }
+
   if (dict_find(iter, MESSAGE_KEY_SETTINGS_REQUEST)) {
     prv_send_settings();
   }
@@ -322,6 +387,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   const int16_t w = bounds.size.w;
   const int16_t stroke = ORANGE_STROKE;
+  const ColorTheme *theme = prv_theme();
 
   // Keep the inner orange area centered and expand the border outward
   GRect base_rect = prv_orange_rect_for_bounds(bounds);
@@ -340,30 +406,30 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
   GRect shadow_rect = outer_rect;
   shadow_rect.origin.x += w / 30;
   shadow_rect.origin.y += w / 30;
-  graphics_context_set_fill_color(ctx, GColorBlack);
+  graphics_context_set_fill_color(ctx, theme->ink);
   graphics_fill_rect(ctx, shadow_rect, 0, GCornerNone);
 
   // Fill border with straight edges, then overlay inner orange body
-  graphics_context_set_fill_color(ctx, GColorBlack);
+  graphics_context_set_fill_color(ctx, theme->ink);
   graphics_fill_rect(ctx, outer_rect, 0, GCornerNone);
 
-  graphics_context_set_fill_color(ctx, GColorOrange);
+  graphics_context_set_fill_color(ctx, theme->body);
   graphics_fill_rect(ctx, inner_rect, 0, GCornerNone);
 
   // Polygon for 200px wide canvases
   if (w == 200 && s_polygon_200) {
-    graphics_context_set_fill_color(ctx, GColorChromeYellow);
+    graphics_context_set_fill_color(ctx, theme->accent);
     gpath_draw_filled(ctx, s_polygon_200);
-    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_200.points, s_polygon_info_200.num_points, 4);
 
     // Base black strip behind the pastel rectangle
-    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_context_set_fill_color(ctx, theme->ink);
     graphics_fill_rect(ctx, GRect(26, 170, 160, 29), 0, GCornerNone);
 
     // Pastel yellow box with the same bold outline treatment as the orange rect
     GRect pastel_rect = GRect(22, 150, 155, 45);
-    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_context_set_fill_color(ctx, theme->ink);
     graphics_fill_rect(ctx, pastel_rect, 0, GCornerNone);
 
     const int16_t pastel_stroke = stroke * 2;
@@ -372,7 +438,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     pastel_inner.origin.y += pastel_stroke;
     pastel_inner.size.w -= 2 * pastel_stroke;
     pastel_inner.size.h -= 2 * pastel_stroke;
-    graphics_context_set_fill_color(ctx, GColorPastelYellow);
+    graphics_context_set_fill_color(ctx, theme->battery_frame);
     graphics_fill_rect(ctx, pastel_inner, 0, GCornerNone);
 
     GRect pastel_core = pastel_inner;
@@ -380,7 +446,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     pastel_core.origin.y += 4;
     pastel_core.size.w -= 8;
     pastel_core.size.h -= 8;
-    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_context_set_fill_color(ctx, theme->ink);
     graphics_fill_rect(ctx, pastel_core, 0, GCornerNone);
 
     GRect bar_bounds = pastel_core;
@@ -390,7 +456,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     bar_bounds.size.h -= 8;
     GRect bar_rect = bar_bounds;
     bar_rect.size.w = (int16_t)((bar_bounds.size.w * s_battery_percent) / 100);
-    graphics_context_set_fill_color(ctx, GColorLavenderIndigo);
+    graphics_context_set_fill_color(ctx, theme->battery_bar);
     graphics_fill_rect(ctx, bar_rect, 0, GCornerNone);
 
     // Decorative right-angled outline
@@ -400,21 +466,21 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
       {186, 213},
       {100, 213},
     };
-    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, deco_points, ARRAY_LENGTH(deco_points), 4);
   } else if (s_polygon_144) {
-    graphics_context_set_fill_color(ctx, GColorChromeYellow);
+    graphics_context_set_fill_color(ctx, theme->accent);
     gpath_draw_filled(ctx, s_polygon_144);
-    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_144.points, s_polygon_info_144.num_points, 4);
 
     // Base black strip behind the pastel rectangle (scaled for 144x168)
-    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_context_set_fill_color(ctx, theme->ink);
     graphics_fill_rect(ctx, GRect(19, 128, 115, 24), 0, GCornerNone);
 
     // Scaled pastel yellow box with the same outline treatment
     GRect pastel_rect = GRect(16, 111, 112, 38);
-    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_context_set_fill_color(ctx, theme->ink);
     graphics_fill_rect(ctx, pastel_rect, 0, GCornerNone);
 
     const int16_t pastel_stroke = stroke * 2;
@@ -423,7 +489,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     pastel_inner.origin.y += pastel_stroke;
     pastel_inner.size.w -= 2 * pastel_stroke;
     pastel_inner.size.h -= 2 * pastel_stroke;
-    graphics_context_set_fill_color(ctx, GColorPastelYellow);
+    graphics_context_set_fill_color(ctx, theme->battery_frame);
     graphics_fill_rect(ctx, pastel_inner, 0, GCornerNone);
 
     GRect pastel_core = pastel_inner;
@@ -431,7 +497,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     pastel_core.origin.y += 3;
     pastel_core.size.w -= 6;
     pastel_core.size.h -= 6;
-    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_context_set_fill_color(ctx, theme->ink);
     graphics_fill_rect(ctx, pastel_core, 0, GCornerNone);
 
     GRect bar_bounds = pastel_core;
@@ -441,7 +507,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     bar_bounds.size.h -= 6;
     GRect bar_rect = bar_bounds;
     bar_rect.size.w = (int16_t)((bar_bounds.size.w * s_battery_percent) / 100);
-    graphics_context_set_fill_color(ctx, GColorLavenderIndigo);
+    graphics_context_set_fill_color(ctx, theme->battery_bar);
     graphics_fill_rect(ctx, bar_rect, 0, GCornerNone);
 
     // Decorative right-angled outline scaled for 144x168
@@ -451,7 +517,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
       {134, 160},
       {72, 160},
     };
-    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, deco_points, ARRAY_LENGTH(deco_points), 3);
   }
 
@@ -483,7 +549,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
   const int16_t start_x = inner_rect.origin.x + (inner_rect.size.w - total_width) / 2;
   const int16_t start_y = inner_rect.origin.y + (inner_rect.size.h - glyph_height) / 2;
 
-  graphics_context_set_fill_color(ctx, GColorBlack);
+  graphics_context_set_fill_color(ctx, theme->ink);
 
   int16_t cursor_x = start_x;
   for (size_t i = 0; i < time_len; i++) {
@@ -528,7 +594,7 @@ static void prv_window_load(Window *window) {
 
   s_date_layer = text_layer_create(GRect(date_x, date_y, date_w, date_h));
   text_layer_set_background_color(s_date_layer, GColorClear);
-  text_layer_set_text_color(s_date_layer, GColorBlack);
+  text_layer_set_text_color(s_date_layer, prv_theme()->ink);
   text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
 
   const uint32_t font_res = is_200 ? RESOURCE_ID_FONT_JERSEY_38 : RESOURCE_ID_FONT_JERSEY_25;
@@ -563,9 +629,15 @@ static void prv_init(void) {
   s_use_24_hour = persist_exists(PERSIST_KEY_TIME_FORMAT)
       ? persist_read_bool(PERSIST_KEY_TIME_FORMAT)
       : clock_is_24h_style();
+  s_color_theme = persist_exists(PERSIST_KEY_COLOR_THEME)
+      ? (uint8_t)persist_read_int(PERSIST_KEY_COLOR_THEME)
+      : THEME_NEUBRUTALISM;
+  if (s_color_theme >= THEME_COUNT) {
+    s_color_theme = THEME_NEUBRUTALISM;
+  }
 
   s_window = window_create();
-  window_set_background_color(s_window, GColorPastelYellow);
+  window_set_background_color(s_window, prv_theme()->background);
   window_set_window_handlers(s_window, (WindowHandlers) {
     .load = prv_window_load,
     .unload = prv_window_unload,

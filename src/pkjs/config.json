@@ -17,6 +17,20 @@
         "label": "24-Hour Time",
         "description": "Turn off to use the 12-hour time format",
         "defaultValue": true
+      },
+      {
+        "type": "select",
+        "messageKey": "COLOR_THEME",
+        "label": "Color Theme",
+        "defaultValue": 0,
+        "options": [
+          { "label": "Neubrutalism", "value": 0 },
+          { "label": "Game Boy Green", "value": 1 },
+          { "label": "Ocean Blue", "value": 2 },
+          { "label": "Amber LCD", "value": 3 },
+          { "label": "Monochrome", "value": 4 },
+          { "label": "Purple Pixel", "value": 5 }
+        ]
       }
     ]
   },

@@ -28,15 +28,24 @@ Pebble.addEventListener('ready', function() {
 });
 
 Pebble.addEventListener('appmessage', function(event) {
-  var value = event.payload.TIME_FORMAT;
-  if (value === undefined) {
-    value = event.payload[messageKeys.TIME_FORMAT];
+  var timeFormat = event.payload.TIME_FORMAT;
+  if (timeFormat === undefined) {
+    timeFormat = event.payload[messageKeys.TIME_FORMAT];
   }
-  if (value === undefined) {
+  var colorTheme = event.payload.COLOR_THEME;
+  if (colorTheme === undefined) {
+    colorTheme = event.payload[messageKeys.COLOR_THEME];
+  }
+  if (timeFormat === undefined && colorTheme === undefined) {
     return;
   }
 
-  clay.setSettings('TIME_FORMAT', Boolean(value));
+  if (timeFormat !== undefined) {
+    clay.setSettings('TIME_FORMAT', Boolean(timeFormat));
+  }
+  if (colorTheme !== undefined) {
+    clay.setSettings('COLOR_THEME', Number(colorTheme));
+  }
   if (configurationPending) {
     openConfiguration();
   }
@@ -57,9 +66,13 @@ Pebble.addEventListener('webviewclosed', function(event) {
   }
 
   var settings = clay.getSettings(event.response);
+  if (settings[messageKeys.COLOR_THEME] !== undefined) {
+    // HTML select values are strings; AppMessage must send the theme as an integer.
+    settings[messageKeys.COLOR_THEME] = Number(settings[messageKeys.COLOR_THEME]);
+  }
   Pebble.sendAppMessage(settings, function() {
-    console.log('Time format synchronized with watch');
+    console.log('Settings synchronized with watch');
   }, function(error) {
-    console.log('Could not synchronize time format: ' + JSON.stringify(error));
+    console.log('Could not synchronize settings: ' + JSON.stringify(error));
   });
 });
