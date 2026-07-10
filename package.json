@@ -2,9 +2,15 @@
   "name": "neubrutalism",
   "author": "Yorks0n",
   "version": "1.0.2",
-  "keywords": ["brutalism","neubrutalism","brutal"],
+  "keywords": [
+    "brutalism",
+    "neubrutalism",
+    "brutal"
+  ],
   "private": true,
-  "dependencies": {},
+  "dependencies": {
+    "@rebble/clay": "^1.0.10"
+  },
   "pebble": {
     "displayName": "neubrutalism",
     "uuid": "469c06b3-67cf-4135-9e4f-15ab0900ddbe",
@@ -21,7 +27,8 @@
       "watchface": true
     },
     "messageKeys": [
-      "dummy"
+      "TIME_FORMAT",
+      "SETTINGS_REQUEST"
     ],
     "resources": {
       "media": [

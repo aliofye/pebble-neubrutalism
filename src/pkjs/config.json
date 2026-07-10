@@ -1,0 +1,27 @@
+[
+  {
+    "type": "heading",
+    "defaultValue": "Neubrutalism",
+    "size": 1
+  },
+  {
+    "type": "section",
+    "items": [
+      {
+        "type": "heading",
+        "defaultValue": "Time Display"
+      },
+      {
+        "type": "toggle",
+        "messageKey": "TIME_FORMAT",
+        "label": "24-Hour Time",
+        "description": "Turn off to use the 12-hour time format",
+        "defaultValue": true
+      }
+    ]
+  },
+  {
+    "type": "submit",
+    "defaultValue": "Save"
+  }
+]

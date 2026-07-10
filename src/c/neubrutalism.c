@@ -2,16 +2,23 @@
 #include <pebble.h>
 #include <string.h>
 
+#include "message_keys.auto.h"
+
 static Window *s_window;
 static Layer *s_canvas_layer;
 static TextLayer *s_date_layer;
 static GFont s_date_font;
-static char s_time_buffer[6];
+static char s_time_buffer[8];
 static char s_date_buffer[8];
 static int s_current_hour;
 static GPath *s_polygon_200;
 static GPath *s_polygon_144;
 static int s_battery_percent = 100;
+static bool s_use_24_hour;
+
+enum {
+  PERSIST_KEY_TIME_FORMAT = 1,
+};
 
 static const int16_t ORANGE_STROKE = 3;
 
@@ -240,14 +247,16 @@ static void prv_update_time(void) {
   time_t now = time(NULL);
   struct tm *tick_time = localtime(&now);
 
-  const int hour = tick_time->tm_hour;
-  const int minute = tick_time->tm_min;
+  const uint8_t hour = s_use_24_hour
+      ? tick_time->tm_hour
+      : (tick_time->tm_hour % 12 == 0 ? 12 : tick_time->tm_hour % 12);
+  const uint8_t minute = tick_time->tm_min;
   s_current_hour = hour;
 
   if (hour < 10) {
-    snprintf(s_time_buffer, sizeof(s_time_buffer), "%d:%02d", hour, minute);
+    snprintf(s_time_buffer, sizeof(s_time_buffer), "%u:%02u", hour, minute);
   } else {
-    snprintf(s_time_buffer, sizeof(s_time_buffer), "%02d:%02d", hour, minute);
+    snprintf(s_time_buffer, sizeof(s_time_buffer), "%02u:%02u", hour, minute);
   }
 
   strftime(s_date_buffer, sizeof(s_date_buffer), "%b %d", tick_time);
@@ -279,6 +288,34 @@ static GRect prv_orange_rect_for_bounds(GRect bounds) {
 
 static void prv_tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   prv_update_time();
+}
+
+static void prv_send_settings(void) {
+  DictionaryIterator *iter;
+  AppMessageResult result = app_message_outbox_begin(&iter);
+  if (result != APP_MSG_OK) {
+    APP_LOG(APP_LOG_LEVEL_WARNING, "Could not begin settings sync: %d", result);
+    return;
+  }
+
+  dict_write_uint8(iter, MESSAGE_KEY_TIME_FORMAT, s_use_24_hour ? 1 : 0);
+  result = app_message_outbox_send();
+  if (result != APP_MSG_OK) {
+    APP_LOG(APP_LOG_LEVEL_WARNING, "Could not send settings sync: %d", result);
+  }
+}
+
+static void prv_inbox_received(DictionaryIterator *iter, void *context) {
+  Tuple *format_tuple = dict_find(iter, MESSAGE_KEY_TIME_FORMAT);
+  if (format_tuple) {
+    s_use_24_hour = format_tuple->value->int32 != 0;
+    persist_write_bool(PERSIST_KEY_TIME_FORMAT, s_use_24_hour);
+    prv_update_time();
+  }
+
+  if (dict_find(iter, MESSAGE_KEY_SETTINGS_REQUEST)) {
+    prv_send_settings();
+  }
 }
 
 static void prv_canvas_update(Layer *layer, GContext *ctx) {
@@ -523,6 +560,10 @@ static void prv_window_unload(Window *window) {
 }
 
 static void prv_init(void) {
+  s_use_24_hour = persist_exists(PERSIST_KEY_TIME_FORMAT)
+      ? persist_read_bool(PERSIST_KEY_TIME_FORMAT)
+      : clock_is_24h_style();
+
   s_window = window_create();
   window_set_background_color(s_window, GColorPastelYellow);
   window_set_window_handlers(s_window, (WindowHandlers) {
@@ -536,11 +577,15 @@ static void prv_init(void) {
   s_battery_percent = state.charge_percent;
   battery_state_service_subscribe(prv_battery_handler);
   tick_timer_service_subscribe(MINUTE_UNIT, prv_tick_handler);
+
+  app_message_register_inbox_received(prv_inbox_received);
+  app_message_open(32, 32);
 }
 
 static void prv_deinit(void) {
   battery_state_service_unsubscribe();
   tick_timer_service_unsubscribe();
+  app_message_deregister_callbacks();
   window_destroy(s_window);
 }
 
