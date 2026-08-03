@@ -1,7 +1,8 @@
 var Clay = require('@rebble/clay');
 var clayConfig = require('./config.json');
+var customClay = require('./custom-clay');
 var messageKeys = require('message_keys');
-var clay = new Clay(clayConfig, null, { autoHandleEvents: false });
+var clay = new Clay(clayConfig, customClay, { autoHandleEvents: false });
 
 var configurationPending = false;
 var configurationTimeout = null;
@@ -36,7 +37,16 @@ Pebble.addEventListener('appmessage', function(event) {
   if (colorTheme === undefined) {
     colorTheme = event.payload[messageKeys.COLOR_THEME];
   }
-  if (timeFormat === undefined && colorTheme === undefined) {
+  var bottomBarMetric = event.payload.BOTTOM_BAR_METRIC;
+  if (bottomBarMetric === undefined) {
+    bottomBarMetric = event.payload[messageKeys.BOTTOM_BAR_METRIC];
+  }
+  var dailyStepGoal = event.payload.DAILY_STEP_GOAL;
+  if (dailyStepGoal === undefined) {
+    dailyStepGoal = event.payload[messageKeys.DAILY_STEP_GOAL];
+  }
+  if (timeFormat === undefined && colorTheme === undefined &&
+      bottomBarMetric === undefined && dailyStepGoal === undefined) {
     return;
   }
 
@@ -45,6 +55,12 @@ Pebble.addEventListener('appmessage', function(event) {
   }
   if (colorTheme !== undefined) {
     clay.setSettings('COLOR_THEME', Number(colorTheme));
+  }
+  if (bottomBarMetric !== undefined) {
+    clay.setSettings('BOTTOM_BAR_METRIC', Number(bottomBarMetric));
+  }
+  if (dailyStepGoal !== undefined) {
+    clay.setSettings('DAILY_STEP_GOAL', Number(dailyStepGoal));
   }
   if (configurationPending) {
     openConfiguration();
@@ -69,6 +85,16 @@ Pebble.addEventListener('webviewclosed', function(event) {
   if (settings[messageKeys.COLOR_THEME] !== undefined) {
     // HTML select values are strings; AppMessage must send the theme as an integer.
     settings[messageKeys.COLOR_THEME] = Number(settings[messageKeys.COLOR_THEME]);
+  }
+  if (settings[messageKeys.BOTTOM_BAR_METRIC] !== undefined) {
+    settings[messageKeys.BOTTOM_BAR_METRIC] = Number(settings[messageKeys.BOTTOM_BAR_METRIC]);
+  }
+  if (settings[messageKeys.DAILY_STEP_GOAL] !== undefined) {
+    var dailyStepGoal = Number(settings[messageKeys.DAILY_STEP_GOAL]);
+    if (!isFinite(dailyStepGoal) || dailyStepGoal < 1000 || dailyStepGoal > 100000) {
+      dailyStepGoal = 10000;
+    }
+    settings[messageKeys.DAILY_STEP_GOAL] = Math.round(dailyStepGoal);
   }
   Pebble.sendAppMessage(settings, function() {
     console.log('Settings synchronized with watch');

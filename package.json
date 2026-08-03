@@ -29,7 +29,9 @@
     "messageKeys": [
       "TIME_FORMAT",
       "SETTINGS_REQUEST",
-      "COLOR_THEME"
+      "COLOR_THEME",
+      "BOTTOM_BAR_METRIC",
+      "DAILY_STEP_GOAL"
     ],
     "resources": {
       "media": [

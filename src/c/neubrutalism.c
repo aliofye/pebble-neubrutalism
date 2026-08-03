@@ -14,12 +14,29 @@ static int s_current_hour;
 static GPath *s_polygon_200;
 static GPath *s_polygon_144;
 static int s_battery_percent = 100;
+static int s_step_goal_percent;
+static int32_t s_daily_step_goal;
 static bool s_use_24_hour;
 static uint8_t s_color_theme;
+static uint8_t s_bottom_bar_metric;
 
 enum {
   PERSIST_KEY_TIME_FORMAT = 1,
   PERSIST_KEY_COLOR_THEME = 2,
+  PERSIST_KEY_BOTTOM_BAR_METRIC = 3,
+  PERSIST_KEY_DAILY_STEP_GOAL = 4,
+};
+
+enum {
+  BOTTOM_BAR_BATTERY = 0,
+  BOTTOM_BAR_DAILY_STEPS,
+  BOTTOM_BAR_METRIC_COUNT,
+};
+
+enum {
+  DAILY_STEP_GOAL_DEFAULT = 10000,
+  DAILY_STEP_GOAL_MIN = 1000,
+  DAILY_STEP_GOAL_MAX = 100000,
 };
 
 enum {
@@ -332,6 +349,33 @@ static void prv_battery_handler(BatteryChargeState state) {
   }
 }
 
+static void prv_update_step_progress(void) {
+  int progress = 0;
+#if defined(PBL_HEALTH)
+  const HealthValue steps = health_service_sum_today(HealthMetricStepCount);
+  if (steps > 0) {
+    progress = steps >= s_daily_step_goal
+        ? 100
+        : (int)((steps * 100) / s_daily_step_goal);
+  }
+#endif
+
+  if (s_step_goal_percent != progress) {
+    s_step_goal_percent = progress;
+    if (s_canvas_layer && s_bottom_bar_metric == BOTTOM_BAR_DAILY_STEPS) {
+      layer_mark_dirty(s_canvas_layer);
+    }
+  }
+}
+
+#if defined(PBL_HEALTH)
+static void prv_health_handler(HealthEventType event, void *context) {
+  if (event == HealthEventMovementUpdate || event == HealthEventSignificantUpdate) {
+    prv_update_step_progress();
+  }
+}
+#endif
+
 static GRect prv_orange_rect_for_bounds(GRect bounds) {
   const int16_t w = bounds.size.w;
   const int16_t h = bounds.size.h;
@@ -352,6 +396,8 @@ static void prv_send_settings(void) {
 
   dict_write_uint8(iter, MESSAGE_KEY_TIME_FORMAT, s_use_24_hour ? 1 : 0);
   dict_write_uint8(iter, MESSAGE_KEY_COLOR_THEME, s_color_theme);
+  dict_write_uint8(iter, MESSAGE_KEY_BOTTOM_BAR_METRIC, s_bottom_bar_metric);
+  dict_write_int32(iter, MESSAGE_KEY_DAILY_STEP_GOAL, s_daily_step_goal);
   result = app_message_outbox_send();
   if (result != APP_MSG_OK) {
     APP_LOG(APP_LOG_LEVEL_WARNING, "Could not send settings sync: %d", result);
@@ -378,6 +424,31 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
     }
   }
 
+  Tuple *step_goal_tuple = dict_find(iter, MESSAGE_KEY_DAILY_STEP_GOAL);
+  if (step_goal_tuple) {
+    const int32_t step_goal = step_goal_tuple->value->int32;
+    if (step_goal >= DAILY_STEP_GOAL_MIN && step_goal <= DAILY_STEP_GOAL_MAX) {
+      s_daily_step_goal = step_goal;
+      persist_write_int(PERSIST_KEY_DAILY_STEP_GOAL, s_daily_step_goal);
+      if (s_bottom_bar_metric == BOTTOM_BAR_DAILY_STEPS) {
+        prv_update_step_progress();
+      }
+    }
+  }
+
+  Tuple *bar_metric_tuple = dict_find(iter, MESSAGE_KEY_BOTTOM_BAR_METRIC);
+  if (bar_metric_tuple) {
+    const uint8_t bar_metric = (uint8_t)bar_metric_tuple->value->int32;
+    if (bar_metric < BOTTOM_BAR_METRIC_COUNT) {
+      s_bottom_bar_metric = bar_metric;
+      persist_write_int(PERSIST_KEY_BOTTOM_BAR_METRIC, s_bottom_bar_metric);
+      if (s_bottom_bar_metric == BOTTOM_BAR_DAILY_STEPS) {
+        prv_update_step_progress();
+      }
+      layer_mark_dirty(s_canvas_layer);
+    }
+  }
+
   if (dict_find(iter, MESSAGE_KEY_SETTINGS_REQUEST)) {
     prv_send_settings();
   }
@@ -388,6 +459,9 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
   const int16_t w = bounds.size.w;
   const int16_t stroke = ORANGE_STROKE;
   const ColorTheme *theme = prv_theme();
+  const int bar_percent = s_bottom_bar_metric == BOTTOM_BAR_DAILY_STEPS
+      ? s_step_goal_percent
+      : s_battery_percent;
 
   // Keep the inner orange area centered and expand the border outward
   GRect base_rect = prv_orange_rect_for_bounds(bounds);
@@ -455,7 +529,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     bar_bounds.size.w -= 8;
     bar_bounds.size.h -= 8;
     GRect bar_rect = bar_bounds;
-    bar_rect.size.w = (int16_t)((bar_bounds.size.w * s_battery_percent) / 100);
+    bar_rect.size.w = (int16_t)((bar_bounds.size.w * bar_percent) / 100);
     graphics_context_set_fill_color(ctx, theme->battery_bar);
     graphics_fill_rect(ctx, bar_rect, 0, GCornerNone);
 
@@ -506,7 +580,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     bar_bounds.size.w -= 6;
     bar_bounds.size.h -= 6;
     GRect bar_rect = bar_bounds;
-    bar_rect.size.w = (int16_t)((bar_bounds.size.w * s_battery_percent) / 100);
+    bar_rect.size.w = (int16_t)((bar_bounds.size.w * bar_percent) / 100);
     graphics_context_set_fill_color(ctx, theme->battery_bar);
     graphics_fill_rect(ctx, bar_rect, 0, GCornerNone);
 
@@ -635,6 +709,18 @@ static void prv_init(void) {
   if (s_color_theme >= THEME_COUNT) {
     s_color_theme = THEME_NEUBRUTALISM;
   }
+  s_bottom_bar_metric = persist_exists(PERSIST_KEY_BOTTOM_BAR_METRIC)
+      ? (uint8_t)persist_read_int(PERSIST_KEY_BOTTOM_BAR_METRIC)
+      : BOTTOM_BAR_BATTERY;
+  if (s_bottom_bar_metric >= BOTTOM_BAR_METRIC_COUNT) {
+    s_bottom_bar_metric = BOTTOM_BAR_BATTERY;
+  }
+  s_daily_step_goal = persist_exists(PERSIST_KEY_DAILY_STEP_GOAL)
+      ? persist_read_int(PERSIST_KEY_DAILY_STEP_GOAL)
+      : DAILY_STEP_GOAL_DEFAULT;
+  if (s_daily_step_goal < DAILY_STEP_GOAL_MIN || s_daily_step_goal > DAILY_STEP_GOAL_MAX) {
+    s_daily_step_goal = DAILY_STEP_GOAL_DEFAULT;
+  }
 
   s_window = window_create();
   window_set_background_color(s_window, prv_theme()->background);
@@ -648,14 +734,21 @@ static void prv_init(void) {
   BatteryChargeState state = battery_state_service_peek();
   s_battery_percent = state.charge_percent;
   battery_state_service_subscribe(prv_battery_handler);
+#if defined(PBL_HEALTH)
+  prv_update_step_progress();
+  health_service_events_subscribe(prv_health_handler, NULL);
+#endif
   tick_timer_service_subscribe(MINUTE_UNIT, prv_tick_handler);
 
   app_message_register_inbox_received(prv_inbox_received);
-  app_message_open(32, 32);
+  app_message_open(64, 64);
 }
 
 static void prv_deinit(void) {
   battery_state_service_unsubscribe();
+#if defined(PBL_HEALTH)
+  health_service_events_unsubscribe();
+#endif
   tick_timer_service_unsubscribe();
   app_message_deregister_callbacks();
   window_destroy(s_window);

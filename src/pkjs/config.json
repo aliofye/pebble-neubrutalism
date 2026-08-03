@@ -31,6 +31,36 @@
           { "label": "Monochrome", "value": 4 },
           { "label": "Purple Pixel", "value": 5 }
         ]
+      },
+      {
+        "type": "heading",
+        "defaultValue": "Bottom Progress Bar"
+      },
+      {
+        "type": "select",
+        "messageKey": "BOTTOM_BAR_METRIC",
+        "label": "Bar Length",
+        "description": "Choose what the bottom bar represents.",
+        "defaultValue": 0,
+        "options": [
+          { "label": "Battery Level", "value": 0 },
+          { "label": "Daily Steps Goal", "value": 1 }
+        ]
+      },
+      {
+        "type": "input",
+        "messageKey": "DAILY_STEP_GOAL",
+        "label": "Daily Step Target",
+        "description": "Enter a target between 1,000 and 100,000 steps.",
+        "defaultValue": "10000",
+        "attributes": {
+          "type": "number",
+          "min": 1000,
+          "max": 100000,
+          "step": 500,
+          "inputmode": "numeric",
+          "required": true
+        }
       }
     ]
   },
