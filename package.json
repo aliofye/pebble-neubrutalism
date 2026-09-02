@@ -1,7 +1,7 @@
 {
   "name": "neubrutalism+",
   "author": "aliofye",
-  "version": "1.2.0",
+  "version": "1.0.0",
   "keywords": [
     "brutalism",
     "neubrutalism",
@@ -45,6 +45,7 @@
       "SETTINGS_REQUEST",
       "COLOR_THEME",
       "DAILY_STEP_GOAL",
+      "WEATHER_ENABLED",
       "WEATHER_TEMP",
       "WEATHER_UNITS"
     ],

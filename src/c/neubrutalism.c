@@ -24,6 +24,7 @@ static char s_weather_buffer[8];
 static int s_weather_temp;
 static uint8_t s_weather_units;
 static bool s_weather_available;
+static bool s_weather_enabled = true;
 static int s_battery_percent = 100;
 static int s_step_goal_percent;
 static int32_t s_daily_step_goal;
@@ -36,6 +37,7 @@ enum {
   PERSIST_KEY_DAILY_STEP_GOAL = 4,
   PERSIST_KEY_WEATHER_UNITS = 5,
   PERSIST_KEY_WEATHER_TEMP = 6,
+  PERSIST_KEY_WEATHER_ENABLED = 7,
 };
 
 enum {
@@ -263,6 +265,15 @@ static void prv_update_weather_text(void) {
   text_layer_set_text(s_weather_layer, s_weather_buffer);
 }
 
+static void prv_apply_weather_visibility(void) {
+  if (s_weather_layer) {
+    layer_set_hidden(text_layer_get_layer(s_weather_layer), !s_weather_enabled);
+  }
+  if (s_canvas_layer) {
+    layer_mark_dirty(s_canvas_layer);
+  }
+}
+
 
 static void prv_battery_handler(BatteryChargeState state) {
   s_battery_percent = state.charge_percent;
@@ -319,6 +330,7 @@ static void prv_send_settings(void) {
   dict_write_uint8(iter, MESSAGE_KEY_TIME_FORMAT, s_use_24_hour ? 1 : 0);
   dict_write_uint8(iter, MESSAGE_KEY_COLOR_THEME, s_color_theme);
   dict_write_int32(iter, MESSAGE_KEY_DAILY_STEP_GOAL, s_daily_step_goal);
+  dict_write_uint8(iter, MESSAGE_KEY_WEATHER_ENABLED, s_weather_enabled ? 1 : 0);
   dict_write_uint8(iter, MESSAGE_KEY_WEATHER_UNITS, s_weather_units);
   result = app_message_outbox_send();
   if (result != APP_MSG_OK) {
@@ -364,6 +376,13 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
       persist_write_int(PERSIST_KEY_WEATHER_UNITS, s_weather_units);
       prv_update_weather_text();
     }
+  }
+
+  Tuple *weather_enabled_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_ENABLED);
+  if (weather_enabled_tuple) {
+    s_weather_enabled = weather_enabled_tuple->value->int32 != 0;
+    persist_write_bool(PERSIST_KEY_WEATHER_ENABLED, s_weather_enabled);
+    prv_apply_weather_visibility();
   }
 
   Tuple *weather_temp_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_TEMP);
@@ -480,10 +499,12 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_200.points, s_polygon_info_200.num_points, 4);
 
     // Weather bubble: white fill, black border, mirrors the date bubble
-    graphics_context_set_fill_color(ctx, GColorWhite);
-    gpath_draw_filled(ctx, s_polygon_200_weather);
-    graphics_context_set_fill_color(ctx, theme->ink);
-    prv_draw_axis_aligned_outline(ctx, s_polygon_info_200_weather.points, s_polygon_info_200_weather.num_points, 4);
+    if (s_weather_enabled) {
+      graphics_context_set_fill_color(ctx, GColorWhite);
+      gpath_draw_filled(ctx, s_polygon_200_weather);
+      graphics_context_set_fill_color(ctx, theme->ink);
+      prv_draw_axis_aligned_outline(ctx, s_polygon_info_200_weather.points, s_polygon_info_200_weather.num_points, 4);
+    }
 
     // Battery bar (top) and step-goal bar (bottom), stacked and vertically
     // centered between the time box shadow and the bottom of the screen
@@ -503,10 +524,12 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_144.points, s_polygon_info_144.num_points, 4);
 
     // Weather bubble: white fill, black border, mirrors the date bubble
-    graphics_context_set_fill_color(ctx, GColorWhite);
-    gpath_draw_filled(ctx, s_polygon_144_weather);
-    graphics_context_set_fill_color(ctx, theme->ink);
-    prv_draw_axis_aligned_outline(ctx, s_polygon_info_144_weather.points, s_polygon_info_144_weather.num_points, 4);
+    if (s_weather_enabled) {
+      graphics_context_set_fill_color(ctx, GColorWhite);
+      gpath_draw_filled(ctx, s_polygon_144_weather);
+      graphics_context_set_fill_color(ctx, theme->ink);
+      prv_draw_axis_aligned_outline(ctx, s_polygon_info_144_weather.points, s_polygon_info_144_weather.num_points, 4);
+    }
 
     // Battery bar (top) and step-goal bar (bottom), stacked and vertically
     // centered between the time box shadow and the bottom of the screen
@@ -618,6 +641,7 @@ static void prv_window_load(Window *window) {
 
   prv_update_time();
   prv_update_weather_text();
+  prv_apply_weather_visibility();
 }
 
 static void prv_window_unload(Window *window) {
@@ -674,6 +698,9 @@ static void prv_init(void) {
     s_weather_temp = persist_read_int(PERSIST_KEY_WEATHER_TEMP);
     s_weather_available = true;
   }
+  s_weather_enabled = persist_exists(PERSIST_KEY_WEATHER_ENABLED)
+      ? persist_read_bool(PERSIST_KEY_WEATHER_ENABLED)
+      : true;
 
   s_window = window_create();
   window_set_background_color(s_window, prv_theme()->background);

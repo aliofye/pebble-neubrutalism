@@ -3,6 +3,7 @@ jest.mock('message_keys', () => ({
   SETTINGS_REQUEST: 'SETTINGS_REQUEST',
   COLOR_THEME: 'COLOR_THEME',
   DAILY_STEP_GOAL: 'DAILY_STEP_GOAL',
+  WEATHER_ENABLED: 'WEATHER_ENABLED',
   WEATHER_TEMP: 'WEATHER_TEMP',
   WEATHER_UNITS: 'WEATHER_UNITS',
 }), { virtual: true });
@@ -38,6 +39,7 @@ function fire(event, arg) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.clearAllTimers();
 });
 
 describe('index', () => {
@@ -71,6 +73,30 @@ describe('index', () => {
   it('ignores invalid weather units from appmessage', () => {
     fire('appmessage', { payload: { WEATHER_UNITS: 5 } });
     expect(clayInstance.setSettings).not.toHaveBeenCalledWith('WEATHER_UNITS', 5);
+  });
+
+  it('stops the weather timer when weather is disabled and restarts it when enabled', () => {
+    // Disable first so the test starts from a known timer state.
+    fire('appmessage', { payload: { WEATHER_ENABLED: 0 } });
+    expect(clayInstance.setSettings).toHaveBeenCalledWith('WEATHER_ENABLED', false);
+    expect(jest.getTimerCount()).toBe(0);
+
+    fire('appmessage', { payload: { WEATHER_ENABLED: 1 } });
+    expect(clayInstance.setSettings).toHaveBeenCalledWith('WEATHER_ENABLED', true);
+    expect(jest.getTimerCount()).toBe(1);
+
+    fire('appmessage', { payload: { WEATHER_ENABLED: 0 } });
+    expect(clayInstance.setSettings).toHaveBeenCalledWith('WEATHER_ENABLED', false);
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('normalizes the weather enabled toggle when the config closes', () => {
+    fire('webviewclosed', { response: JSON.stringify({ WEATHER_ENABLED: 'false' }) });
+    expect(Pebble.sendAppMessage).toHaveBeenCalledWith(
+      { WEATHER_ENABLED: 0 },
+      expect.any(Function),
+      expect.any(Function)
+    );
   });
 
   it('ignores appmessages without any known keys', () => {

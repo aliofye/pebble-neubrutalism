@@ -8,6 +8,27 @@ var configurationPending = false;
 var configurationTimeout = null;
 var currentWeatherUnits = 0;
 var weatherFetchPending = false;
+var weatherEnabled = true;
+var weatherTimer = null;
+
+function parseBool(value) {
+  return value === true || value === 'true' || value === 1 || value === '1' ||
+         value === 'on';
+}
+
+function syncWeatherScheduling() {
+  if (weatherEnabled) {
+    if (weatherTimer === null) {
+      weatherTimer = setInterval(fetchWeatherForLocation, 60 * 60 * 1000);
+    }
+    fetchWeatherForLocation();
+  } else {
+    if (weatherTimer !== null) {
+      clearInterval(weatherTimer);
+      weatherTimer = null;
+    }
+  }
+}
 
 function fetchWeather(latitude, longitude) {
   var unit = currentWeatherUnits === 1 ? 'celsius' : 'fahrenheit';
@@ -44,7 +65,7 @@ function fetchWeather(latitude, longitude) {
 }
 
 function fetchWeatherForLocation() {
-  if (weatherFetchPending) {
+  if (!weatherEnabled || weatherFetchPending) {
     return;
   }
   if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -79,8 +100,7 @@ function requestWatchSettings() {
 
 Pebble.addEventListener('ready', function() {
   requestWatchSettings();
-  fetchWeatherForLocation();
-  setInterval(fetchWeatherForLocation, 60 * 60 * 1000);
+  syncWeatherScheduling();
 });
 
 Pebble.addEventListener('appmessage', function(event) {
@@ -100,8 +120,13 @@ Pebble.addEventListener('appmessage', function(event) {
   if (weatherUnits === undefined) {
     weatherUnits = event.payload[messageKeys.WEATHER_UNITS];
   }
+  var weatherEnabledPayload = event.payload.WEATHER_ENABLED;
+  if (weatherEnabledPayload === undefined) {
+    weatherEnabledPayload = event.payload[messageKeys.WEATHER_ENABLED];
+  }
   if (timeFormat === undefined && colorTheme === undefined &&
-      dailyStepGoal === undefined && weatherUnits === undefined) {
+      dailyStepGoal === undefined && weatherUnits === undefined &&
+      weatherEnabledPayload === undefined) {
     return;
   }
 
@@ -113,6 +138,11 @@ Pebble.addEventListener('appmessage', function(event) {
   }
   if (dailyStepGoal !== undefined) {
     clay.setSettings('DAILY_STEP_GOAL', Number(dailyStepGoal));
+  }
+  if (weatherEnabledPayload !== undefined) {
+    weatherEnabled = Number(weatherEnabledPayload) !== 0;
+    clay.setSettings('WEATHER_ENABLED', weatherEnabled);
+    syncWeatherScheduling();
   }
   if (weatherUnits !== undefined) {
     var units = Number(weatherUnits);
@@ -154,6 +184,10 @@ Pebble.addEventListener('webviewclosed', function(event) {
       currentWeatherUnits = settings[messageKeys.WEATHER_UNITS];
     }
   }
+  if (settings[messageKeys.WEATHER_ENABLED] !== undefined) {
+    weatherEnabled = parseBool(settings[messageKeys.WEATHER_ENABLED]);
+    settings[messageKeys.WEATHER_ENABLED] = weatherEnabled ? 1 : 0;
+  }
   if (settings[messageKeys.DAILY_STEP_GOAL] !== undefined) {
     var dailyStepGoal = Number(settings[messageKeys.DAILY_STEP_GOAL]);
     if (!isFinite(dailyStepGoal) || dailyStepGoal < 1000 || dailyStepGoal > 100000) {
@@ -167,5 +201,5 @@ Pebble.addEventListener('webviewclosed', function(event) {
     console.log('Could not synchronize settings: ' + JSON.stringify(error));
   });
 
-  fetchWeatherForLocation();
+  syncWeatherScheduling();
 });

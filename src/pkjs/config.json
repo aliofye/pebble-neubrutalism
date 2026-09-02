@@ -52,6 +52,13 @@
         "defaultValue": "Weather"
       },
       {
+        "type": "toggle",
+        "messageKey": "WEATHER_ENABLED",
+        "label": "Show Weather",
+        "description": "Turn off to hide the temperature bubble and stop background weather updates.",
+        "defaultValue": true
+      },
+      {
         "type": "select",
         "messageKey": "WEATHER_UNITS",
         "label": "Temperature Units",
