@@ -1,0 +1,13 @@
+Animated Slime sprite sheet
+Author: Calciumtrice
+Source: https://opengameart.org/content/animated-slime
+License: Creative Commons Attribution 3.0 (CC-BY 3.0)
+         https://creativecommons.org/licenses/by/3.0/
+
+Used under the CC-BY 3.0 license: modification, scaling and use in
+personal/commercial projects are permitted with attribution.
+
+Credit: "Animated Slime by Calciumtrice (OpenGameArt.org)"
+
+The frames under resources/pet/frames/ are sliced from the original
+slime spritesheet (idle animation, color variant 1).

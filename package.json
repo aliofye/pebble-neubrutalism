@@ -20,7 +20,8 @@
     "jest": "^29.7.0"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "preview:pet": "node scripts/pet-preview.js"
   },
   "jest": {
     "testEnvironment": "node"
@@ -76,6 +77,56 @@
           "name": "FONT_JERSEY_25",
           "file": "fonts/Jersey10-Regular.ttf",
           "size": 25
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_00",
+          "file": "pet/frames/frame_00.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_01",
+          "file": "pet/frames/frame_01.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_02",
+          "file": "pet/frames/frame_02.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_03",
+          "file": "pet/frames/frame_03.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_04",
+          "file": "pet/frames/frame_04.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_05",
+          "file": "pet/frames/frame_05.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_06",
+          "file": "pet/frames/frame_06.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_07",
+          "file": "pet/frames/frame_07.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_08",
+          "file": "pet/frames/frame_08.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_09",
+          "file": "pet/frames/frame_09.png"
         }
       ]
     }

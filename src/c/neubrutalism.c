@@ -6,6 +6,7 @@
 #include "glyphs.h"
 #include "layout.h"
 #include "message_keys.auto.h"
+#include "pet.h"
 #include "time_util.h"
 
 // TEMP: debug — cycle the weather bubble through every condition color and the
@@ -44,6 +45,8 @@ static int32_t s_daily_step_goal;
 static bool s_use_24_hour;
 static uint8_t s_color_theme;
 static uint8_t s_bars_mode;
+static AppTimer *s_pet_timer;
+static uint32_t s_pet_tick;
 
 enum {
   PERSIST_KEY_TIME_FORMAT = 1,
@@ -549,6 +552,55 @@ static GColor prv_weather_bubble_color(const ColorTheme *theme, bool available) 
   }
 }
 
+static PetMood prv_pet_mood(void) {
+  if (!s_weather_available) {
+    return PET_MOOD_NEUTRAL;
+  }
+  switch (s_weather_code) {
+    case 0:
+    case 1:
+      return PET_MOOD_HAPPY;
+    case 51:
+    case 53:
+    case 55:
+    case 56:
+    case 57:
+    case 61:
+    case 63:
+    case 65:
+    case 66:
+    case 67:
+    case 80:
+    case 81:
+    case 82:
+      return PET_MOOD_SAD;
+    case 95:
+    case 96:
+    case 99:
+      return PET_MOOD_SCARED;
+    default:
+      return PET_MOOD_NEUTRAL;
+  }
+}
+
+static void prv_draw_pet(GContext *ctx, GRect bounds, int16_t time_bottom) {
+  const int16_t w = bounds.size.w;
+  const GSize size = pet_size();
+  const int16_t avail_h = bounds.size.h - time_bottom;
+  GPoint origin;
+  origin.x = (w - size.w) / 2;
+  origin.y = time_bottom + (avail_h - size.h) / 2;
+  pet_draw(ctx, origin, prv_pet_mood(), s_pet_tick);
+}
+
+static void prv_pet_tick(void *data) {
+  s_pet_tick++;
+  if (s_canvas_layer) {
+    layer_mark_dirty(s_canvas_layer);
+  }
+  s_pet_timer = app_timer_register(500, prv_pet_tick, NULL);
+}
+
 static void prv_canvas_update(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   const int16_t w = bounds.size.w;
@@ -600,29 +652,8 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
       prv_draw_axis_aligned_outline(ctx, s_polygon_info_200_weather.points, s_polygon_info_200_weather.num_points, 4);
     }
 
-    // Progress bars: either a single full-height bar or two stacked bars,
-    // vertically centered between the time box shadow and the bottom
-    const int16_t avail_h = bounds.size.h - time_bottom;
-    if (s_bars_mode == BARS_BATTERY_ONLY || s_bars_mode == BARS_STEPS_ONLY) {
-      const int16_t bar_h = 45;
-      const int16_t bar_top = time_bottom + (avail_h - (bar_h + METRIC_SHADOW_OFFSET)) / 2;
-      const int percent = s_bars_mode == BARS_BATTERY_ONLY
-          ? s_battery_percent
-          : s_step_goal_percent;
-      const GColor fill = s_bars_mode == BARS_BATTERY_ONLY
-          ? prv_battery_color(theme, s_battery_percent)
-          : GColorWhite;
-      prv_draw_metric_bar(ctx, theme, GRect(22, bar_top, 155, bar_h), stroke, percent, fill);
-    } else {
-      const int16_t bar_h = 32;
-      const int16_t bar_gap = 8;
-      const int16_t stack_h = bar_h * 2 + bar_gap + METRIC_SHADOW_OFFSET;
-      const int16_t stack_top = time_bottom + (avail_h - stack_h) / 2;
-      prv_draw_metric_bar(ctx, theme, GRect(22, stack_top, 155, bar_h), stroke, s_battery_percent,
-                          prv_battery_color(theme, s_battery_percent));
-      prv_draw_metric_bar(ctx, theme, GRect(22, stack_top + bar_h + bar_gap, 155, bar_h),
-                          stroke, s_step_goal_percent, GColorWhite);
-    }
+    // SPIKE: pixel pet placeholder
+    prv_draw_pet(ctx, bounds, time_bottom);
   } else if (s_polygon_144) {
     graphics_context_set_fill_color(ctx, GColorWhite);
     gpath_draw_filled(ctx, s_polygon_144);
@@ -637,29 +668,8 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
       prv_draw_axis_aligned_outline(ctx, s_polygon_info_144_weather.points, s_polygon_info_144_weather.num_points, 4);
     }
 
-    // Progress bars: either a single full-height bar or two stacked bars,
-    // vertically centered between the time box shadow and the bottom
-    const int16_t avail_h = bounds.size.h - time_bottom;
-    if (s_bars_mode == BARS_BATTERY_ONLY || s_bars_mode == BARS_STEPS_ONLY) {
-      const int16_t bar_h = 38;
-      const int16_t bar_top = time_bottom + (avail_h - (bar_h + METRIC_SHADOW_OFFSET)) / 2;
-      const int percent = s_bars_mode == BARS_BATTERY_ONLY
-          ? s_battery_percent
-          : s_step_goal_percent;
-      const GColor fill = s_bars_mode == BARS_BATTERY_ONLY
-          ? prv_battery_color(theme, s_battery_percent)
-          : GColorWhite;
-      prv_draw_metric_bar(ctx, theme, GRect(16, bar_top, 112, bar_h), stroke, percent, fill);
-    } else {
-      const int16_t bar_h = 24;
-      const int16_t bar_gap = 6;
-      const int16_t stack_h = bar_h * 2 + bar_gap + METRIC_SHADOW_OFFSET;
-      const int16_t stack_top = time_bottom + (avail_h - stack_h) / 2;
-      prv_draw_metric_bar(ctx, theme, GRect(16, stack_top, 112, bar_h), stroke, s_battery_percent,
-                          prv_battery_color(theme, s_battery_percent));
-      prv_draw_metric_bar(ctx, theme, GRect(16, stack_top + bar_h + bar_gap, 112, bar_h),
-                          stroke, s_step_goal_percent, GColorWhite);
-    }
+    // SPIKE: pixel pet placeholder
+    prv_draw_pet(ctx, bounds, time_bottom);
   }
 
   const size_t time_len = strlen(s_time_buffer);
@@ -760,6 +770,9 @@ static void prv_window_load(Window *window) {
   prv_update_time();
   prv_update_weather_text();
   prv_apply_weather_visibility();
+  pet_init();
+  s_pet_tick = 0;
+  s_pet_timer = app_timer_register(300, prv_pet_tick, NULL);
 #if DEBUG_COLOR_CYCLE
   s_weather_available = true;
   prv_update_weather_text();
@@ -792,6 +805,11 @@ static void prv_window_unload(Window *window) {
   s_date_layer = NULL;
   text_layer_destroy(s_weather_layer);
   s_weather_layer = NULL;
+if (s_pet_timer) {
+    app_timer_cancel(s_pet_timer);
+    s_pet_timer = NULL;
+  }
+  pet_deinit();
 #if DEBUG_COLOR_CYCLE
   if (s_debug_cycle_timer) {
     app_timer_cancel(s_debug_cycle_timer);
