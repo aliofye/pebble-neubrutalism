@@ -116,6 +116,10 @@ Pebble.addEventListener('appmessage', function(event) {
   if (dailyStepGoal === undefined) {
     dailyStepGoal = event.payload[messageKeys.DAILY_STEP_GOAL];
   }
+  var barsMode = event.payload.BARS_MODE;
+  if (barsMode === undefined) {
+    barsMode = event.payload[messageKeys.BARS_MODE];
+  }
   var weatherUnits = event.payload.WEATHER_UNITS;
   if (weatherUnits === undefined) {
     weatherUnits = event.payload[messageKeys.WEATHER_UNITS];
@@ -125,8 +129,8 @@ Pebble.addEventListener('appmessage', function(event) {
     weatherEnabledPayload = event.payload[messageKeys.WEATHER_ENABLED];
   }
   if (timeFormat === undefined && colorTheme === undefined &&
-      dailyStepGoal === undefined && weatherUnits === undefined &&
-      weatherEnabledPayload === undefined) {
+      dailyStepGoal === undefined && barsMode === undefined &&
+      weatherUnits === undefined && weatherEnabledPayload === undefined) {
     return;
   }
 
@@ -138,6 +142,9 @@ Pebble.addEventListener('appmessage', function(event) {
   }
   if (dailyStepGoal !== undefined) {
     clay.setSettings('DAILY_STEP_GOAL', Number(dailyStepGoal));
+  }
+  if (barsMode !== undefined) {
+    clay.setSettings('BARS_MODE', Number(barsMode));
   }
   if (weatherEnabledPayload !== undefined) {
     weatherEnabled = Number(weatherEnabledPayload) !== 0;
@@ -177,6 +184,9 @@ Pebble.addEventListener('webviewclosed', function(event) {
   if (settings[messageKeys.COLOR_THEME] !== undefined) {
     // HTML select values are strings; AppMessage must send the theme as an integer.
     settings[messageKeys.COLOR_THEME] = Number(settings[messageKeys.COLOR_THEME]);
+  }
+  if (settings[messageKeys.BARS_MODE] !== undefined) {
+    settings[messageKeys.BARS_MODE] = Number(settings[messageKeys.BARS_MODE]);
   }
   if (settings[messageKeys.WEATHER_UNITS] !== undefined) {
     settings[messageKeys.WEATHER_UNITS] = Number(settings[messageKeys.WEATHER_UNITS]);

@@ -30,6 +30,7 @@ static int s_step_goal_percent;
 static int32_t s_daily_step_goal;
 static bool s_use_24_hour;
 static uint8_t s_color_theme;
+static uint8_t s_bars_mode;
 
 enum {
   PERSIST_KEY_TIME_FORMAT = 1,
@@ -38,6 +39,14 @@ enum {
   PERSIST_KEY_WEATHER_UNITS = 5,
   PERSIST_KEY_WEATHER_TEMP = 6,
   PERSIST_KEY_WEATHER_ENABLED = 7,
+  PERSIST_KEY_BARS_MODE = 8,
+};
+
+enum {
+  BARS_BOTH = 0,
+  BARS_BATTERY_ONLY,
+  BARS_STEPS_ONLY,
+  BARS_MODE_COUNT,
 };
 
 enum {
@@ -330,6 +339,7 @@ static void prv_send_settings(void) {
   dict_write_uint8(iter, MESSAGE_KEY_TIME_FORMAT, s_use_24_hour ? 1 : 0);
   dict_write_uint8(iter, MESSAGE_KEY_COLOR_THEME, s_color_theme);
   dict_write_int32(iter, MESSAGE_KEY_DAILY_STEP_GOAL, s_daily_step_goal);
+  dict_write_uint8(iter, MESSAGE_KEY_BARS_MODE, s_bars_mode);
   dict_write_uint8(iter, MESSAGE_KEY_WEATHER_ENABLED, s_weather_enabled ? 1 : 0);
   dict_write_uint8(iter, MESSAGE_KEY_WEATHER_UNITS, s_weather_units);
   result = app_message_outbox_send();
@@ -365,6 +375,16 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
       s_daily_step_goal = step_goal;
       persist_write_int(PERSIST_KEY_DAILY_STEP_GOAL, s_daily_step_goal);
       prv_update_step_progress();
+    }
+  }
+
+  Tuple *bars_mode_tuple = dict_find(iter, MESSAGE_KEY_BARS_MODE);
+  if (bars_mode_tuple) {
+    const uint8_t bars_mode = (uint8_t)bars_mode_tuple->value->int32;
+    if (bars_mode < BARS_MODE_COUNT) {
+      s_bars_mode = bars_mode;
+      persist_write_int(PERSIST_KEY_BARS_MODE, s_bars_mode);
+      layer_mark_dirty(s_canvas_layer);
     }
   }
 
@@ -506,17 +526,29 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
       prv_draw_axis_aligned_outline(ctx, s_polygon_info_200_weather.points, s_polygon_info_200_weather.num_points, 4);
     }
 
-    // Battery bar (top) and step-goal bar (bottom), stacked and vertically
-    // centered between the time box shadow and the bottom of the screen
-    const int16_t bar_h = 32;
-    const int16_t bar_gap = 8;
-    const int16_t stack_h = bar_h * 2 + bar_gap + METRIC_SHADOW_OFFSET;
+    // Progress bars: either a single full-height bar or two stacked bars,
+    // vertically centered between the time box shadow and the bottom
     const int16_t avail_h = bounds.size.h - time_bottom;
-    const int16_t stack_top = time_bottom + (avail_h - stack_h) / 2;
-    prv_draw_metric_bar(ctx, theme, GRect(22, stack_top, 155, bar_h), stroke, s_battery_percent,
-                        prv_battery_color(theme, s_battery_percent));
-    prv_draw_metric_bar(ctx, theme, GRect(22, stack_top + bar_h + bar_gap, 155, bar_h),
-                        stroke, s_step_goal_percent, GColorWhite);
+    if (s_bars_mode == BARS_BATTERY_ONLY || s_bars_mode == BARS_STEPS_ONLY) {
+      const int16_t bar_h = 45;
+      const int16_t bar_top = time_bottom + (avail_h - (bar_h + METRIC_SHADOW_OFFSET)) / 2;
+      const int percent = s_bars_mode == BARS_BATTERY_ONLY
+          ? s_battery_percent
+          : s_step_goal_percent;
+      const GColor fill = s_bars_mode == BARS_BATTERY_ONLY
+          ? prv_battery_color(theme, s_battery_percent)
+          : GColorWhite;
+      prv_draw_metric_bar(ctx, theme, GRect(22, bar_top, 155, bar_h), stroke, percent, fill);
+    } else {
+      const int16_t bar_h = 32;
+      const int16_t bar_gap = 8;
+      const int16_t stack_h = bar_h * 2 + bar_gap + METRIC_SHADOW_OFFSET;
+      const int16_t stack_top = time_bottom + (avail_h - stack_h) / 2;
+      prv_draw_metric_bar(ctx, theme, GRect(22, stack_top, 155, bar_h), stroke, s_battery_percent,
+                          prv_battery_color(theme, s_battery_percent));
+      prv_draw_metric_bar(ctx, theme, GRect(22, stack_top + bar_h + bar_gap, 155, bar_h),
+                          stroke, s_step_goal_percent, GColorWhite);
+    }
   } else if (s_polygon_144) {
     graphics_context_set_fill_color(ctx, theme->accent);
     gpath_draw_filled(ctx, s_polygon_144);
@@ -531,17 +563,29 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
       prv_draw_axis_aligned_outline(ctx, s_polygon_info_144_weather.points, s_polygon_info_144_weather.num_points, 4);
     }
 
-    // Battery bar (top) and step-goal bar (bottom), stacked and vertically
-    // centered between the time box shadow and the bottom of the screen
-    const int16_t bar_h = 24;
-    const int16_t bar_gap = 6;
-    const int16_t stack_h = bar_h * 2 + bar_gap + METRIC_SHADOW_OFFSET;
+    // Progress bars: either a single full-height bar or two stacked bars,
+    // vertically centered between the time box shadow and the bottom
     const int16_t avail_h = bounds.size.h - time_bottom;
-    const int16_t stack_top = time_bottom + (avail_h - stack_h) / 2;
-    prv_draw_metric_bar(ctx, theme, GRect(16, stack_top, 112, bar_h), stroke, s_battery_percent,
-                        prv_battery_color(theme, s_battery_percent));
-    prv_draw_metric_bar(ctx, theme, GRect(16, stack_top + bar_h + bar_gap, 112, bar_h),
-                        stroke, s_step_goal_percent, GColorWhite);
+    if (s_bars_mode == BARS_BATTERY_ONLY || s_bars_mode == BARS_STEPS_ONLY) {
+      const int16_t bar_h = 38;
+      const int16_t bar_top = time_bottom + (avail_h - (bar_h + METRIC_SHADOW_OFFSET)) / 2;
+      const int percent = s_bars_mode == BARS_BATTERY_ONLY
+          ? s_battery_percent
+          : s_step_goal_percent;
+      const GColor fill = s_bars_mode == BARS_BATTERY_ONLY
+          ? prv_battery_color(theme, s_battery_percent)
+          : GColorWhite;
+      prv_draw_metric_bar(ctx, theme, GRect(16, bar_top, 112, bar_h), stroke, percent, fill);
+    } else {
+      const int16_t bar_h = 24;
+      const int16_t bar_gap = 6;
+      const int16_t stack_h = bar_h * 2 + bar_gap + METRIC_SHADOW_OFFSET;
+      const int16_t stack_top = time_bottom + (avail_h - stack_h) / 2;
+      prv_draw_metric_bar(ctx, theme, GRect(16, stack_top, 112, bar_h), stroke, s_battery_percent,
+                          prv_battery_color(theme, s_battery_percent));
+      prv_draw_metric_bar(ctx, theme, GRect(16, stack_top + bar_h + bar_gap, 112, bar_h),
+                          stroke, s_step_goal_percent, GColorWhite);
+    }
   }
 
   const size_t time_len = strlen(s_time_buffer);
@@ -687,6 +731,12 @@ static void prv_init(void) {
       : DAILY_STEP_GOAL_DEFAULT;
   if (s_daily_step_goal < DAILY_STEP_GOAL_MIN || s_daily_step_goal > DAILY_STEP_GOAL_MAX) {
     s_daily_step_goal = DAILY_STEP_GOAL_DEFAULT;
+  }
+  s_bars_mode = persist_exists(PERSIST_KEY_BARS_MODE)
+      ? (uint8_t)persist_read_int(PERSIST_KEY_BARS_MODE)
+      : BARS_BOTH;
+  if (s_bars_mode >= BARS_MODE_COUNT) {
+    s_bars_mode = BARS_BOTH;
   }
   s_weather_units = persist_exists(PERSIST_KEY_WEATHER_UNITS)
       ? (uint8_t)persist_read_int(PERSIST_KEY_WEATHER_UNITS)

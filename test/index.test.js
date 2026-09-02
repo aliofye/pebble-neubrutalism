@@ -3,6 +3,7 @@ jest.mock('message_keys', () => ({
   SETTINGS_REQUEST: 'SETTINGS_REQUEST',
   COLOR_THEME: 'COLOR_THEME',
   DAILY_STEP_GOAL: 'DAILY_STEP_GOAL',
+  BARS_MODE: 'BARS_MODE',
   WEATHER_ENABLED: 'WEATHER_ENABLED',
   WEATHER_TEMP: 'WEATHER_TEMP',
   WEATHER_UNITS: 'WEATHER_UNITS',
@@ -58,11 +59,13 @@ describe('index', () => {
         TIME_FORMAT: 1,
         COLOR_THEME: 2,
         DAILY_STEP_GOAL: 5000,
+        BARS_MODE: 2,
       },
     });
     expect(clayInstance.setSettings).toHaveBeenCalledWith('TIME_FORMAT', true);
     expect(clayInstance.setSettings).toHaveBeenCalledWith('COLOR_THEME', 2);
     expect(clayInstance.setSettings).toHaveBeenCalledWith('DAILY_STEP_GOAL', 5000);
+    expect(clayInstance.setSettings).toHaveBeenCalledWith('BARS_MODE', 2);
   });
 
   it('syncs weather units from appmessage into clay settings', () => {
@@ -123,11 +126,12 @@ describe('index', () => {
       response: JSON.stringify({
         COLOR_THEME: '2',
         DAILY_STEP_GOAL: '5000',
+        BARS_MODE: '1',
         WEATHER_UNITS: '1',
       }),
     });
     expect(Pebble.sendAppMessage).toHaveBeenCalledWith(
-      { COLOR_THEME: 2, DAILY_STEP_GOAL: 5000, WEATHER_UNITS: 1 },
+      { COLOR_THEME: 2, DAILY_STEP_GOAL: 5000, BARS_MODE: 1, WEATHER_UNITS: 1 },
       expect.any(Function),
       expect.any(Function)
     );

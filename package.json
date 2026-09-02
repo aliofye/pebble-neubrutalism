@@ -45,6 +45,7 @@
       "SETTINGS_REQUEST",
       "COLOR_THEME",
       "DAILY_STEP_GOAL",
+      "BARS_MODE",
       "WEATHER_ENABLED",
       "WEATHER_TEMP",
       "WEATHER_UNITS"

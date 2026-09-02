@@ -11,7 +11,11 @@ emulator and/or a real watch after any watch-side change.
 - [ ] The date updates at midnight, and the day/month flip independently.
 
 ## Progress bars
-- [ ] The **battery** bar (top) fills proportionally to battery level; in the
+- [ ] With **Show = Battery & Steps**, the battery bar (top) and steps bar (bottom)
+      render as two stacked bars.
+- [ ] With **Show = Battery Only** or **Steps Only**, a single full-height bar is
+      vertically centered in the space below the time box.
+- [ ] The **battery** bar fills proportionally to battery level; in the
       neubrutalism theme it reads green (>= 50%), yellow (20-49%), and red (< 20%),
       and the bar is clear at 100%, mid, and low.
 - [ ] The **daily steps** bar (bottom) fills white; progress = steps / step target,

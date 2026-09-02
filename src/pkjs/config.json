@@ -49,6 +49,22 @@
       },
       {
         "type": "heading",
+        "defaultValue": "Progress Bars"
+      },
+      {
+        "type": "select",
+        "messageKey": "BARS_MODE",
+        "label": "Show",
+        "description": "Choose which progress bars to display.",
+        "defaultValue": 0,
+        "options": [
+          { "label": "Battery & Steps", "value": 0 },
+          { "label": "Battery Only", "value": 1 },
+          { "label": "Steps Only", "value": 2 }
+        ]
+      },
+      {
+        "type": "heading",
         "defaultValue": "Weather"
       },
       {
