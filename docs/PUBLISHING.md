@@ -44,7 +44,7 @@ resolution. The watchface ships for two native resolutions:
 | 200 × 228 | emery |
 
 Use `pebble screenshot` on a paired watch or the emulator. You already have current
-shots in `screenshot/` (basalt, aplite, emery) — reuse those.
+shots in `docs/screenshots/` (basalt, aplite, emery) — reuse those.
 
 ## 3. Create the listing (dev-portal.rebble.io)
 

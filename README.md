@@ -35,7 +35,7 @@ watchface's settings from the Pebble app to configure them.
 
 | Basalt | Aplite | Theme |
 | --- | --- | --- |
-| ![Neubrutalism on Basalt](screenshot/screenshot_basalt.png) | ![Neubrutalism on Aplite](screenshot/screenshot_aplite.png) | ![Theme](screenshot/theme_neubrutalism.png) |
+| ![Neubrutalism on Basalt](docs/screenshots/screenshot_basalt.png) | ![Neubrutalism on Aplite](docs/screenshots/screenshot_aplite.png) | ![Theme](docs/screenshots/theme_neubrutalism.png) |
 
 ## Build & run
 
