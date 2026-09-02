@@ -3,7 +3,7 @@
 ![CI](https://github.com/aliofye/pebble-neubrutalism/actions/workflows/ci.yml/badge.svg)
 
 > Built on top of [Yorks0n's neubrutalism watchface](https://github.com/Yorks0n/neubrutalism)
-> — thanks to [brilliant Yorks0n](https://github.com/Yorks0n) for open-sourcing it.
+> — my sincerest gratitude to [Yorks0n](https://github.com/Yorks0n) for open-sourcing it.
 
 A Pebble watchface with a bold, chunky **neubrutalism** aesthetic: a thick black
 outline, hard color blocks, and a pixel-style Jersey font. It shows live weather,
