@@ -2,7 +2,10 @@
 #include <pebble.h>
 #include <string.h>
 
+#include "glyphs.h"
+#include "layout.h"
 #include "message_keys.auto.h"
+#include "time_util.h"
 
 static Window *s_window;
 static Layer *s_canvas_layer;
@@ -147,171 +150,6 @@ static void prv_draw_axis_aligned_outline(GContext *ctx, const GPoint *points, s
     }
   }
 }
-
-typedef struct {
-  const char *rows[10];
-} DigitGlyph;
-
-static const DigitGlyph s_digit_glyphs[] = {
-  // 0
-  { .rows = {
-      "011110",
-      "110011",
-      "110011",
-      "110011",
-      "110011",
-      "110011",
-      "110011",
-      "110011",
-      "110011",
-      "011110",
-    } },
-  // 1
-  { .rows = {
-      "111",
-      "111",
-      "011",
-      "011",
-      "011",
-      "011",
-      "011",
-      "011",
-      "011",
-      "011",
-    } },
-  // 2
-  { .rows = {
-      "0111110",
-      "1111111",
-      "1100011",
-      "0000111",
-      "0001110",
-      "0011100",
-      "0111000",
-      "1110000",
-      "1111111",
-      "1111111",
-    } },
-  // 3
-  { .rows = {
-      "0111110",
-      "1111111",
-      "1100011",
-      "0000011",
-      "0011110",
-      "0011110",
-      "0000011",
-      "1100011",
-      "1111111",
-      "0111110",
-    } },
-  // 4
-  { .rows = {
-      "000011",
-      "000111",
-      "001111",
-      "011011",
-      "110011",
-      "110011",
-      "111111",
-      "111111",
-      "000011",
-      "000011",
-    } },
-  // 5
-  { .rows = {
-      "111111",
-      "111111",
-      "110000",
-      "110000",
-      "111110",
-      "011111",
-      "000011",
-      "110011",
-      "111111",
-      "011110",
-    } },
-  // 6
-  { .rows = {
-      "0111110",
-      "1111111",
-      "1100011",
-      "1100000",
-      "1111110",
-      "1111111",
-      "1100011",
-      "1100011",
-      "1111111",
-      "0111110",
-    } },
-  // 7
-  { .rows = {
-      "111111",
-      "111111",
-      "000011",
-      "000011",
-      "000111",
-      "001110",
-      "001110",
-      "001100",
-      "001100",
-      "001100",
-    } },
-  // 8
-  { .rows = {
-      "0111110",
-      "1111111",
-      "1100011",
-      "1100011",
-      "0111110",
-      "1111111",
-      "1100011",
-      "1100011",
-      "1111111",
-      "0111110",
-    } },
-  // 9
-  { .rows = {
-      "0111110",
-      "1111111",
-      "1100011",
-      "1100011",
-      "1111111",
-      "0111111",
-      "0000011",
-      "1100011",
-      "1111111",
-      "0111110",
-    } },
-  // :
-  { .rows = {
-      "00",
-      "00",
-      "11",
-      "11",
-      "00",
-      "00",
-      "00",
-      "00",
-      "11",
-      "11",
-    } },
-};
-
-static const DigitGlyph *prv_glyph_for_char(char c) {
-  if (c >= '0' && c <= '9') {
-    return &s_digit_glyphs[c - '0'];
-  }
-  if (c == ':') {
-    return &s_digit_glyphs[10];
-  }
-  return NULL;
-}
-
-static int16_t prv_glyph_width(const DigitGlyph *glyph) {
-  return glyph ? (int16_t)strlen(glyph->rows[0]) : 0;
-}
-
 static void prv_update_time(void) {
   time_t now = time(NULL);
   struct tm *tick_time = localtime(&now);
@@ -319,19 +157,11 @@ static void prv_update_time(void) {
   const uint8_t hour = s_use_24_hour
       ? tick_time->tm_hour
       : (tick_time->tm_hour % 12 == 0 ? 12 : tick_time->tm_hour % 12);
-  const uint8_t minute = tick_time->tm_min;
   s_current_hour = hour;
 
-  if (hour < 10) {
-    snprintf(s_time_buffer, sizeof(s_time_buffer), "%u:%02u", hour, minute);
-  } else {
-    snprintf(s_time_buffer, sizeof(s_time_buffer), "%02u:%02u", hour, minute);
-  }
-
-  strftime(s_date_buffer, sizeof(s_date_buffer), "%b %d", tick_time);
-  for (size_t i = 0; s_date_buffer[i]; i++) {
-    s_date_buffer[i] = (char)toupper((unsigned char)s_date_buffer[i]);
-  }
+  format_time(tick_time->tm_hour, tick_time->tm_min, s_use_24_hour,
+              s_time_buffer, sizeof(s_time_buffer));
+  format_date_upper(tick_time, s_date_buffer, sizeof(s_date_buffer));
 
   if (s_date_layer) {
     text_layer_set_text(s_date_layer, s_date_buffer);
@@ -341,6 +171,7 @@ static void prv_update_time(void) {
     layer_mark_dirty(s_canvas_layer);
   }
 }
+
 
 static void prv_battery_handler(BatteryChargeState state) {
   s_battery_percent = state.charge_percent;
@@ -377,9 +208,9 @@ static void prv_health_handler(HealthEventType event, void *context) {
 #endif
 
 static GRect prv_orange_rect_for_bounds(GRect bounds) {
-  const int16_t w = bounds.size.w;
-  const int16_t h = bounds.size.h;
-  return GRect(w / 10, h / 5, (w * 8) / 10, h / 3);
+  int x, y, rw, rh;
+  orange_rect(bounds.size.w, bounds.size.h, &x, &y, &rw, &rh);
+  return GRect(x, y, rw, rh);
 }
 
 static void prv_tick_handler(struct tm *tick_time, TimeUnits units_changed) {
@@ -613,8 +444,8 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
   // Calculate total width with spacing of one pix_w between glyphs
   int16_t total_width = 0;
   for (size_t i = 0; i < time_len; i++) {
-    const DigitGlyph *glyph = prv_glyph_for_char(s_time_buffer[i]);
-    total_width += prv_glyph_width(glyph) * pix_w;
+    const DigitGlyph *glyph = glyph_for_char(s_time_buffer[i]);
+    total_width += glyph_width(glyph) * pix_w;
     if (i < time_len - 1) {
       total_width += pix_w;
     }
@@ -627,8 +458,8 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
 
   int16_t cursor_x = start_x;
   for (size_t i = 0; i < time_len; i++) {
-    const DigitGlyph *glyph = prv_glyph_for_char(s_time_buffer[i]);
-    const int16_t glyph_w = prv_glyph_width(glyph);
+    const DigitGlyph *glyph = glyph_for_char(s_time_buffer[i]);
+    const int16_t glyph_w = glyph_width(glyph);
     if (!glyph) {
       continue;
     }
