@@ -48,7 +48,8 @@
       "BARS_MODE",
       "WEATHER_ENABLED",
       "WEATHER_TEMP",
-      "WEATHER_UNITS"
+      "WEATHER_UNITS",
+      "WEATHER_CODE"
     ],
     "resources": {
       "media": [

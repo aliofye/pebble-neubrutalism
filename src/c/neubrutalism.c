@@ -8,6 +8,11 @@
 #include "message_keys.auto.h"
 #include "time_util.h"
 
+// TEMP: debug — cycle the weather bubble through every condition color and the
+// battery bar through every status color, one step every 2 seconds.
+// Set to 1 while developing, 0 for production builds.
+#define DEBUG_COLOR_CYCLE 0
+
 static Window *s_window;
 static Layer *s_canvas_layer;
 static TextLayer *s_date_layer;
@@ -22,9 +27,17 @@ static GPath *s_polygon_144_weather;
 static TextLayer *s_weather_layer;
 static char s_weather_buffer[8];
 static int s_weather_temp;
+static int s_weather_code;
 static uint8_t s_weather_units;
 static bool s_weather_available;
 static bool s_weather_enabled = true;
+#if DEBUG_COLOR_CYCLE
+static AppTimer *s_debug_cycle_timer;
+static int s_debug_weather_index;
+static int s_debug_battery_index;
+static const int s_debug_weather_codes[] = {0, 3, 51, 71, 95};
+static const int s_debug_battery_percents[] = {10, 35, 90};
+#endif
 static int s_battery_percent = 100;
 static int s_step_goal_percent;
 static int32_t s_daily_step_goal;
@@ -40,6 +53,7 @@ enum {
   PERSIST_KEY_WEATHER_TEMP = 6,
   PERSIST_KEY_WEATHER_ENABLED = 7,
   PERSIST_KEY_BARS_MODE = 8,
+  PERSIST_KEY_WEATHER_CODE = 9,
 };
 
 enum {
@@ -81,6 +95,7 @@ typedef struct {
   GColor battery_low;
   GColor battery_mid;
   GColor battery_high;
+  bool weather_condition_colors;
 } ColorTheme;
 
 static const ColorTheme s_color_themes[THEME_COUNT] = {
@@ -95,6 +110,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_low = GColorRed,
     .battery_mid = GColorChromeYellow,
     .battery_high = GColorMayGreen,
+    .weather_condition_colors = true,
   },
   [THEME_GAME_BOY_GREEN] = {
     .background = GColorLightGray,
@@ -283,6 +299,19 @@ static void prv_apply_weather_visibility(void) {
   }
 }
 
+#if DEBUG_COLOR_CYCLE
+static void prv_debug_cycle_tick(void *data) {
+  s_weather_code = s_debug_weather_codes[s_debug_weather_index];
+  s_debug_weather_index = (s_debug_weather_index + 1) % ARRAY_LENGTH(s_debug_weather_codes);
+  s_battery_percent = s_debug_battery_percents[s_debug_battery_index];
+  s_debug_battery_index = (s_debug_battery_index + 1) % ARRAY_LENGTH(s_debug_battery_percents);
+  if (s_canvas_layer) {
+    layer_mark_dirty(s_canvas_layer);
+  }
+  s_debug_cycle_timer = app_timer_register(2000, prv_debug_cycle_tick, NULL);
+}
+#endif
+
 
 static void prv_battery_handler(BatteryChargeState state) {
   s_battery_percent = state.charge_percent;
@@ -413,6 +442,15 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
     prv_update_weather_text();
   }
 
+  Tuple *weather_code_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_CODE);
+  if (weather_code_tuple) {
+    s_weather_code = weather_code_tuple->value->int32;
+    persist_write_int(PERSIST_KEY_WEATHER_CODE, s_weather_code);
+    if (s_canvas_layer) {
+      layer_mark_dirty(s_canvas_layer);
+    }
+  }
+
   if (dict_find(iter, MESSAGE_KEY_SETTINGS_REQUEST)) {
     prv_send_settings();
   }
@@ -475,6 +513,42 @@ static GColor prv_battery_color(const ColorTheme *theme, int percent) {
   return theme->battery_high;
 }
 
+static GColor prv_weather_bubble_color(const ColorTheme *theme, bool available) {
+  if (!available || !theme->weather_condition_colors) {
+    return GColorWhite;
+  }
+  switch (s_weather_code) {
+    case 0:
+    case 1:
+      return GColorChromeYellow;
+    case 2:
+    case 3:
+    case 45:
+    case 48:
+      return GColorLightGray;
+    case 51:
+    case 53:
+    case 55:
+    case 56:
+    case 57:
+    case 61:
+    case 63:
+    case 65:
+    case 66:
+    case 67:
+    case 80:
+    case 81:
+    case 82:
+      return GColorBabyBlueEyes;
+    case 95:
+    case 96:
+    case 99:
+      return GColorVividViolet;
+    default:
+      return GColorWhite; // snow (71-77, 85-86) and unknown
+  }
+}
+
 static void prv_canvas_update(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   const int16_t w = bounds.size.w;
@@ -518,9 +592,9 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_200.points, s_polygon_info_200.num_points, 4);
 
-    // Weather bubble: white fill, black border, mirrors the date bubble
+    // Weather bubble: condition-colored fill, black border, mirrors the date bubble
     if (s_weather_enabled) {
-      graphics_context_set_fill_color(ctx, GColorWhite);
+      graphics_context_set_fill_color(ctx, prv_weather_bubble_color(theme, s_weather_available));
       gpath_draw_filled(ctx, s_polygon_200_weather);
       graphics_context_set_fill_color(ctx, theme->ink);
       prv_draw_axis_aligned_outline(ctx, s_polygon_info_200_weather.points, s_polygon_info_200_weather.num_points, 4);
@@ -555,9 +629,9 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_144.points, s_polygon_info_144.num_points, 4);
 
-    // Weather bubble: white fill, black border, mirrors the date bubble
+    // Weather bubble: condition-colored fill, black border, mirrors the date bubble
     if (s_weather_enabled) {
-      graphics_context_set_fill_color(ctx, GColorWhite);
+      graphics_context_set_fill_color(ctx, prv_weather_bubble_color(theme, s_weather_available));
       gpath_draw_filled(ctx, s_polygon_144_weather);
       graphics_context_set_fill_color(ctx, theme->ink);
       prv_draw_axis_aligned_outline(ctx, s_polygon_info_144_weather.points, s_polygon_info_144_weather.num_points, 4);
@@ -686,6 +760,11 @@ static void prv_window_load(Window *window) {
   prv_update_time();
   prv_update_weather_text();
   prv_apply_weather_visibility();
+#if DEBUG_COLOR_CYCLE
+  s_weather_available = true;
+  prv_update_weather_text();
+  s_debug_cycle_timer = app_timer_register(2000, prv_debug_cycle_tick, NULL);
+#endif
 }
 
 static void prv_window_unload(Window *window) {
@@ -713,6 +792,12 @@ static void prv_window_unload(Window *window) {
   s_date_layer = NULL;
   text_layer_destroy(s_weather_layer);
   s_weather_layer = NULL;
+#if DEBUG_COLOR_CYCLE
+  if (s_debug_cycle_timer) {
+    app_timer_cancel(s_debug_cycle_timer);
+    s_debug_cycle_timer = NULL;
+  }
+#endif
   layer_destroy(s_canvas_layer);
 }
 
@@ -747,6 +832,9 @@ static void prv_init(void) {
   if (persist_exists(PERSIST_KEY_WEATHER_TEMP)) {
     s_weather_temp = persist_read_int(PERSIST_KEY_WEATHER_TEMP);
     s_weather_available = true;
+  }
+  if (persist_exists(PERSIST_KEY_WEATHER_CODE)) {
+    s_weather_code = persist_read_int(PERSIST_KEY_WEATHER_CODE);
   }
   s_weather_enabled = persist_exists(PERSIST_KEY_WEATHER_ENABLED)
       ? persist_read_bool(PERSIST_KEY_WEATHER_ENABLED)

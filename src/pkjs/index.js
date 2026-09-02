@@ -34,7 +34,7 @@ function fetchWeather(latitude, longitude) {
   var unit = currentWeatherUnits === 1 ? 'celsius' : 'fahrenheit';
   var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + latitude +
             '&longitude=' + longitude +
-            '&current=temperature_2m&temperature_unit=' + unit;
+            '&current=temperature_2m,weather_code&temperature_unit=' + unit;
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.timeout = 15000;
@@ -50,6 +50,9 @@ function fetchWeather(latitude, longitude) {
       if (data && data.current && typeof data.current.temperature_2m === 'number') {
         var payload = {};
         payload[messageKeys.WEATHER_TEMP] = Math.round(data.current.temperature_2m);
+        if (typeof data.current.weather_code === 'number') {
+          payload[messageKeys.WEATHER_CODE] = data.current.weather_code;
+        }
         Pebble.sendAppMessage(payload, function() {
           console.log('Weather synced: ' + payload[messageKeys.WEATHER_TEMP]);
         }, function(error) {

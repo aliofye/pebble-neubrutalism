@@ -27,6 +27,10 @@ emulator and/or a real watch after any watch-side change.
 - [ ] The weather bubble (left of the time box) shows the current temperature from
       the phone companion and updates on app launch; shows `--°F`/`--°C` before the
       first sync.
+- [ ] In the neubrutalism theme the bubble fill follows the condition: yellow
+      (clear), gray (partly cloudy/overcast/fog), light blue (drizzle/rain),
+      vivid violet (thunder); snow and unknown stay white. Other themes keep a
+      white bubble.
 - [ ] Switching temperature units (F/C) in the phone app refetches and redraws the
       bubble with the new unit.
 - [ ] On a real phone: location permission is granted and the temperature is

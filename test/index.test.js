@@ -7,6 +7,7 @@ jest.mock('message_keys', () => ({
   WEATHER_ENABLED: 'WEATHER_ENABLED',
   WEATHER_TEMP: 'WEATHER_TEMP',
   WEATHER_UNITS: 'WEATHER_UNITS',
+  WEATHER_CODE: 'WEATHER_CODE',
 }), { virtual: true });
 
 let clayInstance;
