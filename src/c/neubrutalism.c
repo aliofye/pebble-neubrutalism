@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <pebble.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "glyphs.h"
@@ -19,7 +20,10 @@ static GPath *s_polygon_144;
 static GPath *s_polygon_200_weather;
 static GPath *s_polygon_144_weather;
 static TextLayer *s_weather_layer;
-static char s_weather_buffer[8] = "100°F";
+static char s_weather_buffer[8];
+static int s_weather_temp;
+static uint8_t s_weather_units;
+static bool s_weather_available;
 static int s_battery_percent = 100;
 static int s_step_goal_percent;
 static int32_t s_daily_step_goal;
@@ -32,6 +36,13 @@ enum {
   PERSIST_KEY_COLOR_THEME = 2,
   PERSIST_KEY_BOTTOM_BAR_METRIC = 3,
   PERSIST_KEY_DAILY_STEP_GOAL = 4,
+  PERSIST_KEY_WEATHER_UNITS = 5,
+  PERSIST_KEY_WEATHER_TEMP = 6,
+};
+
+enum {
+  WEATHER_UNITS_F = 0,
+  WEATHER_UNITS_C,
 };
 
 enum {
@@ -247,6 +258,19 @@ static void prv_update_time(void) {
   }
 }
 
+static void prv_update_weather_text(void) {
+  if (!s_weather_layer) {
+    return;
+  }
+  const char unit = s_weather_units == WEATHER_UNITS_C ? 'C' : 'F';
+  if (s_weather_available) {
+    snprintf(s_weather_buffer, sizeof(s_weather_buffer), "%d°%c", s_weather_temp, unit);
+  } else {
+    snprintf(s_weather_buffer, sizeof(s_weather_buffer), "--°%c", unit);
+  }
+  text_layer_set_text(s_weather_layer, s_weather_buffer);
+}
+
 
 static void prv_battery_handler(BatteryChargeState state) {
   s_battery_percent = state.charge_percent;
@@ -304,6 +328,7 @@ static void prv_send_settings(void) {
   dict_write_uint8(iter, MESSAGE_KEY_COLOR_THEME, s_color_theme);
   dict_write_uint8(iter, MESSAGE_KEY_BOTTOM_BAR_METRIC, s_bottom_bar_metric);
   dict_write_int32(iter, MESSAGE_KEY_DAILY_STEP_GOAL, s_daily_step_goal);
+  dict_write_uint8(iter, MESSAGE_KEY_WEATHER_UNITS, s_weather_units);
   result = app_message_outbox_send();
   if (result != APP_MSG_OK) {
     APP_LOG(APP_LOG_LEVEL_WARNING, "Could not send settings sync: %d", result);
@@ -353,6 +378,24 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
       }
       layer_mark_dirty(s_canvas_layer);
     }
+  }
+
+  Tuple *weather_units_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_UNITS);
+  if (weather_units_tuple) {
+    const uint8_t units = (uint8_t)weather_units_tuple->value->int32;
+    if (units == WEATHER_UNITS_F || units == WEATHER_UNITS_C) {
+      s_weather_units = units;
+      persist_write_int(PERSIST_KEY_WEATHER_UNITS, s_weather_units);
+      prv_update_weather_text();
+    }
+  }
+
+  Tuple *weather_temp_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_TEMP);
+  if (weather_temp_tuple) {
+    s_weather_temp = weather_temp_tuple->value->int32;
+    s_weather_available = true;
+    persist_write_int(PERSIST_KEY_WEATHER_TEMP, s_weather_temp);
+    prv_update_weather_text();
   }
 
   if (dict_find(iter, MESSAGE_KEY_SETTINGS_REQUEST)) {
@@ -587,7 +630,6 @@ static void prv_window_load(Window *window) {
   text_layer_set_background_color(s_weather_layer, GColorClear);
   text_layer_set_text_color(s_weather_layer, GColorBlack);
   text_layer_set_text_alignment(s_weather_layer, GTextAlignmentCenter);
-  text_layer_set_text(s_weather_layer, s_weather_buffer);
 
   const uint32_t font_res = is_200 ? RESOURCE_ID_FONT_JERSEY_38 : RESOURCE_ID_FONT_JERSEY_25;
   if (!s_date_font) {
@@ -599,6 +641,7 @@ static void prv_window_load(Window *window) {
   layer_add_child(window_layer, text_layer_get_layer(s_weather_layer));
 
   prv_update_time();
+  prv_update_weather_text();
 }
 
 static void prv_window_unload(Window *window) {
@@ -650,6 +693,16 @@ static void prv_init(void) {
       : DAILY_STEP_GOAL_DEFAULT;
   if (s_daily_step_goal < DAILY_STEP_GOAL_MIN || s_daily_step_goal > DAILY_STEP_GOAL_MAX) {
     s_daily_step_goal = DAILY_STEP_GOAL_DEFAULT;
+  }
+  s_weather_units = persist_exists(PERSIST_KEY_WEATHER_UNITS)
+      ? (uint8_t)persist_read_int(PERSIST_KEY_WEATHER_UNITS)
+      : WEATHER_UNITS_F;
+  if (s_weather_units != WEATHER_UNITS_F && s_weather_units != WEATHER_UNITS_C) {
+    s_weather_units = WEATHER_UNITS_F;
+  }
+  if (persist_exists(PERSIST_KEY_WEATHER_TEMP)) {
+    s_weather_temp = persist_read_int(PERSIST_KEY_WEATHER_TEMP);
+    s_weather_available = true;
   }
 
   s_window = window_create();

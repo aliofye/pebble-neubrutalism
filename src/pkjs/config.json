@@ -61,6 +61,21 @@
           "inputmode": "numeric",
           "required": true
         }
+      },
+      {
+        "type": "heading",
+        "defaultValue": "Weather"
+      },
+      {
+        "type": "select",
+        "messageKey": "WEATHER_UNITS",
+        "label": "Temperature Units",
+        "description": "Choose how the weather bubble displays temperature.",
+        "defaultValue": 0,
+        "options": [
+          { "label": "Fahrenheit (°F)", "value": 0 },
+          { "label": "Celsius (°C)", "value": 1 }
+        ]
       }
     ]
   },

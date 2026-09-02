@@ -4,6 +4,8 @@ jest.mock('message_keys', () => ({
   COLOR_THEME: 'COLOR_THEME',
   BOTTOM_BAR_METRIC: 'BOTTOM_BAR_METRIC',
   DAILY_STEP_GOAL: 'DAILY_STEP_GOAL',
+  WEATHER_TEMP: 'WEATHER_TEMP',
+  WEATHER_UNITS: 'WEATHER_UNITS',
 }), { virtual: true });
 
 let clayInstance;
@@ -64,6 +66,16 @@ describe('index', () => {
     expect(clayInstance.setSettings).toHaveBeenCalledWith('DAILY_STEP_GOAL', 5000);
   });
 
+  it('syncs weather units from appmessage into clay settings', () => {
+    fire('appmessage', { payload: { WEATHER_UNITS: 1 } });
+    expect(clayInstance.setSettings).toHaveBeenCalledWith('WEATHER_UNITS', 1);
+  });
+
+  it('ignores invalid weather units from appmessage', () => {
+    fire('appmessage', { payload: { WEATHER_UNITS: 5 } });
+    expect(clayInstance.setSettings).not.toHaveBeenCalledWith('WEATHER_UNITS', 5);
+  });
+
   it('ignores appmessages without any known keys', () => {
     fire('appmessage', { payload: { UNKNOWN_KEY: 1 } });
     expect(clayInstance.setSettings).not.toHaveBeenCalled();
@@ -89,10 +101,11 @@ describe('index', () => {
         COLOR_THEME: '2',
         BOTTOM_BAR_METRIC: '1',
         DAILY_STEP_GOAL: '5000',
+        WEATHER_UNITS: '1',
       }),
     });
     expect(Pebble.sendAppMessage).toHaveBeenCalledWith(
-      { COLOR_THEME: 2, BOTTOM_BAR_METRIC: 1, DAILY_STEP_GOAL: 5000 },
+      { COLOR_THEME: 2, BOTTOM_BAR_METRIC: 1, DAILY_STEP_GOAL: 5000, WEATHER_UNITS: 1 },
       expect.any(Function),
       expect.any(Function)
     );

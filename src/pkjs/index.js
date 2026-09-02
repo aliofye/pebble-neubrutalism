@@ -6,6 +6,59 @@ var clay = new Clay(clayConfig, customClay, { autoHandleEvents: false });
 
 var configurationPending = false;
 var configurationTimeout = null;
+var currentWeatherUnits = 0;
+var weatherFetchPending = false;
+
+function fetchWeather(latitude, longitude) {
+  var unit = currentWeatherUnits === 1 ? 'celsius' : 'fahrenheit';
+  var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + latitude +
+            '&longitude=' + longitude +
+            '&current=temperature_2m&temperature_unit=' + unit;
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.timeout = 15000;
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      var data;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch (e) {
+        console.log('Could not parse weather response');
+        return;
+      }
+      if (data && data.current && typeof data.current.temperature_2m === 'number') {
+        var payload = {};
+        payload[messageKeys.WEATHER_TEMP] = Math.round(data.current.temperature_2m);
+        Pebble.sendAppMessage(payload, function() {
+          console.log('Weather synced: ' + payload[messageKeys.WEATHER_TEMP]);
+        }, function(error) {
+          console.log('Could not sync weather: ' + JSON.stringify(error));
+        });
+      }
+    }
+  };
+  xhr.onerror = function() {
+    console.log('Weather fetch failed');
+  };
+  xhr.send();
+}
+
+function fetchWeatherForLocation() {
+  if (weatherFetchPending) {
+    return;
+  }
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    return;
+  }
+  weatherFetchPending = true;
+  navigator.geolocation.getCurrentPosition(function(position) {
+    weatherFetchPending = false;
+    fetchWeather(position.coords.latitude, position.coords.longitude);
+  }, function(error) {
+    weatherFetchPending = false;
+    console.log('Could not get location: ' + JSON.stringify(error));
+  }, { timeout: 15000, maximumAge: 600000 });
+}
 
 function openConfiguration() {
   configurationPending = false;
@@ -26,6 +79,8 @@ function requestWatchSettings() {
 
 Pebble.addEventListener('ready', function() {
   requestWatchSettings();
+  fetchWeatherForLocation();
+  setInterval(fetchWeatherForLocation, 60 * 60 * 1000);
 });
 
 Pebble.addEventListener('appmessage', function(event) {
@@ -45,8 +100,13 @@ Pebble.addEventListener('appmessage', function(event) {
   if (dailyStepGoal === undefined) {
     dailyStepGoal = event.payload[messageKeys.DAILY_STEP_GOAL];
   }
+  var weatherUnits = event.payload.WEATHER_UNITS;
+  if (weatherUnits === undefined) {
+    weatherUnits = event.payload[messageKeys.WEATHER_UNITS];
+  }
   if (timeFormat === undefined && colorTheme === undefined &&
-      bottomBarMetric === undefined && dailyStepGoal === undefined) {
+      bottomBarMetric === undefined && dailyStepGoal === undefined &&
+      weatherUnits === undefined) {
     return;
   }
 
@@ -61,6 +121,16 @@ Pebble.addEventListener('appmessage', function(event) {
   }
   if (dailyStepGoal !== undefined) {
     clay.setSettings('DAILY_STEP_GOAL', Number(dailyStepGoal));
+  }
+  if (weatherUnits !== undefined) {
+    var units = Number(weatherUnits);
+    if (units === 0 || units === 1) {
+      clay.setSettings('WEATHER_UNITS', units);
+      if (units !== currentWeatherUnits) {
+        currentWeatherUnits = units;
+        fetchWeatherForLocation();
+      }
+    }
   }
   if (configurationPending) {
     openConfiguration();
@@ -89,6 +159,12 @@ Pebble.addEventListener('webviewclosed', function(event) {
   if (settings[messageKeys.BOTTOM_BAR_METRIC] !== undefined) {
     settings[messageKeys.BOTTOM_BAR_METRIC] = Number(settings[messageKeys.BOTTOM_BAR_METRIC]);
   }
+  if (settings[messageKeys.WEATHER_UNITS] !== undefined) {
+    settings[messageKeys.WEATHER_UNITS] = Number(settings[messageKeys.WEATHER_UNITS]);
+    if (settings[messageKeys.WEATHER_UNITS] === 0 || settings[messageKeys.WEATHER_UNITS] === 1) {
+      currentWeatherUnits = settings[messageKeys.WEATHER_UNITS];
+    }
+  }
   if (settings[messageKeys.DAILY_STEP_GOAL] !== undefined) {
     var dailyStepGoal = Number(settings[messageKeys.DAILY_STEP_GOAL]);
     if (!isFinite(dailyStepGoal) || dailyStepGoal < 1000 || dailyStepGoal > 100000) {
@@ -101,4 +177,6 @@ Pebble.addEventListener('webviewclosed', function(event) {
   }, function(error) {
     console.log('Could not synchronize settings: ' + JSON.stringify(error));
   });
+
+  fetchWeatherForLocation();
 });

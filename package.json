@@ -45,7 +45,9 @@
       "SETTINGS_REQUEST",
       "COLOR_THEME",
       "BOTTOM_BAR_METRIC",
-      "DAILY_STEP_GOAL"
+      "DAILY_STEP_GOAL",
+      "WEATHER_TEMP",
+      "WEATHER_UNITS"
     ],
     "resources": {
       "media": [
