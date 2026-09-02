@@ -29,12 +29,10 @@ static int s_step_goal_percent;
 static int32_t s_daily_step_goal;
 static bool s_use_24_hour;
 static uint8_t s_color_theme;
-static uint8_t s_bottom_bar_metric;
 
 enum {
   PERSIST_KEY_TIME_FORMAT = 1,
   PERSIST_KEY_COLOR_THEME = 2,
-  PERSIST_KEY_BOTTOM_BAR_METRIC = 3,
   PERSIST_KEY_DAILY_STEP_GOAL = 4,
   PERSIST_KEY_WEATHER_UNITS = 5,
   PERSIST_KEY_WEATHER_TEMP = 6,
@@ -43,12 +41,6 @@ enum {
 enum {
   WEATHER_UNITS_F = 0,
   WEATHER_UNITS_C,
-};
-
-enum {
-  BOTTOM_BAR_BATTERY = 0,
-  BOTTOM_BAR_DAILY_STEPS,
-  BOTTOM_BAR_METRIC_COUNT,
 };
 
 enum {
@@ -292,7 +284,7 @@ static void prv_update_step_progress(void) {
 
   if (s_step_goal_percent != progress) {
     s_step_goal_percent = progress;
-    if (s_canvas_layer && s_bottom_bar_metric == BOTTOM_BAR_DAILY_STEPS) {
+    if (s_canvas_layer) {
       layer_mark_dirty(s_canvas_layer);
     }
   }
@@ -326,7 +318,6 @@ static void prv_send_settings(void) {
 
   dict_write_uint8(iter, MESSAGE_KEY_TIME_FORMAT, s_use_24_hour ? 1 : 0);
   dict_write_uint8(iter, MESSAGE_KEY_COLOR_THEME, s_color_theme);
-  dict_write_uint8(iter, MESSAGE_KEY_BOTTOM_BAR_METRIC, s_bottom_bar_metric);
   dict_write_int32(iter, MESSAGE_KEY_DAILY_STEP_GOAL, s_daily_step_goal);
   dict_write_uint8(iter, MESSAGE_KEY_WEATHER_UNITS, s_weather_units);
   result = app_message_outbox_send();
@@ -361,22 +352,7 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
     if (step_goal >= DAILY_STEP_GOAL_MIN && step_goal <= DAILY_STEP_GOAL_MAX) {
       s_daily_step_goal = step_goal;
       persist_write_int(PERSIST_KEY_DAILY_STEP_GOAL, s_daily_step_goal);
-      if (s_bottom_bar_metric == BOTTOM_BAR_DAILY_STEPS) {
-        prv_update_step_progress();
-      }
-    }
-  }
-
-  Tuple *bar_metric_tuple = dict_find(iter, MESSAGE_KEY_BOTTOM_BAR_METRIC);
-  if (bar_metric_tuple) {
-    const uint8_t bar_metric = (uint8_t)bar_metric_tuple->value->int32;
-    if (bar_metric < BOTTOM_BAR_METRIC_COUNT) {
-      s_bottom_bar_metric = bar_metric;
-      persist_write_int(PERSIST_KEY_BOTTOM_BAR_METRIC, s_bottom_bar_metric);
-      if (s_bottom_bar_metric == BOTTOM_BAR_DAILY_STEPS) {
-        prv_update_step_progress();
-      }
-      layer_mark_dirty(s_canvas_layer);
+      prv_update_step_progress();
     }
   }
 
@@ -681,12 +657,6 @@ static void prv_init(void) {
       : THEME_NEUBRUTALISM;
   if (s_color_theme >= THEME_COUNT) {
     s_color_theme = THEME_NEUBRUTALISM;
-  }
-  s_bottom_bar_metric = persist_exists(PERSIST_KEY_BOTTOM_BAR_METRIC)
-      ? (uint8_t)persist_read_int(PERSIST_KEY_BOTTOM_BAR_METRIC)
-      : BOTTOM_BAR_BATTERY;
-  if (s_bottom_bar_metric >= BOTTOM_BAR_METRIC_COUNT) {
-    s_bottom_bar_metric = BOTTOM_BAR_BATTERY;
   }
   s_daily_step_goal = persist_exists(PERSIST_KEY_DAILY_STEP_GOAL)
       ? persist_read_int(PERSIST_KEY_DAILY_STEP_GOAL)

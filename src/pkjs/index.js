@@ -92,10 +92,6 @@ Pebble.addEventListener('appmessage', function(event) {
   if (colorTheme === undefined) {
     colorTheme = event.payload[messageKeys.COLOR_THEME];
   }
-  var bottomBarMetric = event.payload.BOTTOM_BAR_METRIC;
-  if (bottomBarMetric === undefined) {
-    bottomBarMetric = event.payload[messageKeys.BOTTOM_BAR_METRIC];
-  }
   var dailyStepGoal = event.payload.DAILY_STEP_GOAL;
   if (dailyStepGoal === undefined) {
     dailyStepGoal = event.payload[messageKeys.DAILY_STEP_GOAL];
@@ -105,8 +101,7 @@ Pebble.addEventListener('appmessage', function(event) {
     weatherUnits = event.payload[messageKeys.WEATHER_UNITS];
   }
   if (timeFormat === undefined && colorTheme === undefined &&
-      bottomBarMetric === undefined && dailyStepGoal === undefined &&
-      weatherUnits === undefined) {
+      dailyStepGoal === undefined && weatherUnits === undefined) {
     return;
   }
 
@@ -115,9 +110,6 @@ Pebble.addEventListener('appmessage', function(event) {
   }
   if (colorTheme !== undefined) {
     clay.setSettings('COLOR_THEME', Number(colorTheme));
-  }
-  if (bottomBarMetric !== undefined) {
-    clay.setSettings('BOTTOM_BAR_METRIC', Number(bottomBarMetric));
   }
   if (dailyStepGoal !== undefined) {
     clay.setSettings('DAILY_STEP_GOAL', Number(dailyStepGoal));
@@ -155,9 +147,6 @@ Pebble.addEventListener('webviewclosed', function(event) {
   if (settings[messageKeys.COLOR_THEME] !== undefined) {
     // HTML select values are strings; AppMessage must send the theme as an integer.
     settings[messageKeys.COLOR_THEME] = Number(settings[messageKeys.COLOR_THEME]);
-  }
-  if (settings[messageKeys.BOTTOM_BAR_METRIC] !== undefined) {
-    settings[messageKeys.BOTTOM_BAR_METRIC] = Number(settings[messageKeys.BOTTOM_BAR_METRIC]);
   }
   if (settings[messageKeys.WEATHER_UNITS] !== undefined) {
     settings[messageKeys.WEATHER_UNITS] = Number(settings[messageKeys.WEATHER_UNITS]);

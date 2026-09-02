@@ -33,21 +33,6 @@
         ]
       },
       {
-        "type": "heading",
-        "defaultValue": "Bottom Progress Bar"
-      },
-      {
-        "type": "select",
-        "messageKey": "BOTTOM_BAR_METRIC",
-        "label": "Bar Length",
-        "description": "Choose what the bottom bar represents.",
-        "defaultValue": 0,
-        "options": [
-          { "label": "Battery Level", "value": 0 },
-          { "label": "Daily Steps Goal", "value": 1 }
-        ]
-      },
-      {
         "type": "input",
         "messageKey": "DAILY_STEP_GOAL",
         "label": "Daily Step Target",

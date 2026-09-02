@@ -10,24 +10,33 @@ emulator and/or a real watch after any watch-side change.
       the next sync (no stale value left behind).
 - [ ] The date updates at midnight, and the day/month flip independently.
 
-## Bottom progress bar
-- [ ] **Battery** mode: the lavender bar fills proportionally to battery level, and
-      the bar reads clearly at 100%, mid, and low.
-- [ ] **Daily steps** mode: progress = steps / step target; with steps above the
-      target the bar stays full (not overflowing the frame).
-- [ ] Switching the metric from the phone app updates the watch on the next sync.
+## Progress bars
+- [ ] The **battery** bar (top) fills proportionally to battery level; in the
+      neubrutalism theme it reads green (>= 50%), yellow (20-49%), and red (< 20%),
+      and the bar is clear at 100%, mid, and low.
+- [ ] The **daily steps** bar (bottom) fills white; progress = steps / step target,
+      and with steps above the target the bar stays full (not overflowing).
 - [ ] Changing the daily step target re-scales the bar; an out-of-range target sent
       from the phone is clamped (min 1,000 / max 100,000).
+
+## Weather
+- [ ] The weather bubble (left of the time box) shows the current temperature from
+      the phone companion and updates on app launch; shows `--°F`/`--°C` before the
+      first sync.
+- [ ] Switching temperature units (F/C) in the phone app refetches and redraws the
+      bubble with the new unit.
+- [ ] On a real phone: location permission is granted and the temperature is
+      reasonably current (hourly refresh).
 
 ## Color themes
 - [ ] Each theme (Neubrutalism, Game Boy Green, Ocean Blue, Amber LCD, Monochrome,
       Purple Pixel) renders with no black-on-black or white-on-white anywhere: clock,
-      frame, polygon accent, and bar.
+      frame, polygon accent, and bars.
 - [ ] Switching theme while the watchface is showing updates immediately on sync.
 
 ## Platforms
 - [ ] Run on both a 200px (emery) and a 144px (basalt/aplite/diorite/flint) display:
-      the time, date, outline, and bar are all positioned and sized correctly, with
+      the time, date, bubbles, and bars are all positioned and sized correctly, with
       nothing clipped.
 
 ## Battery & wakeup

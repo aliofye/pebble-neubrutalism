@@ -2,7 +2,6 @@ jest.mock('message_keys', () => ({
   TIME_FORMAT: 'TIME_FORMAT',
   SETTINGS_REQUEST: 'SETTINGS_REQUEST',
   COLOR_THEME: 'COLOR_THEME',
-  BOTTOM_BAR_METRIC: 'BOTTOM_BAR_METRIC',
   DAILY_STEP_GOAL: 'DAILY_STEP_GOAL',
   WEATHER_TEMP: 'WEATHER_TEMP',
   WEATHER_UNITS: 'WEATHER_UNITS',
@@ -56,13 +55,11 @@ describe('index', () => {
       payload: {
         TIME_FORMAT: 1,
         COLOR_THEME: 2,
-        BOTTOM_BAR_METRIC: 1,
         DAILY_STEP_GOAL: 5000,
       },
     });
     expect(clayInstance.setSettings).toHaveBeenCalledWith('TIME_FORMAT', true);
     expect(clayInstance.setSettings).toHaveBeenCalledWith('COLOR_THEME', 2);
-    expect(clayInstance.setSettings).toHaveBeenCalledWith('BOTTOM_BAR_METRIC', 1);
     expect(clayInstance.setSettings).toHaveBeenCalledWith('DAILY_STEP_GOAL', 5000);
   });
 
@@ -95,17 +92,16 @@ describe('index', () => {
     expect(Pebble.openURL).toHaveBeenCalledWith('https://clay.example/');
   });
 
-  it('coerces theme and metric to numbers and sends them to the watch', () => {
+  it('coerces theme and weather units to numbers and sends them to the watch', () => {
     fire('webviewclosed', {
       response: JSON.stringify({
         COLOR_THEME: '2',
-        BOTTOM_BAR_METRIC: '1',
         DAILY_STEP_GOAL: '5000',
         WEATHER_UNITS: '1',
       }),
     });
     expect(Pebble.sendAppMessage).toHaveBeenCalledWith(
-      { COLOR_THEME: 2, BOTTOM_BAR_METRIC: 1, DAILY_STEP_GOAL: 5000, WEATHER_UNITS: 1 },
+      { COLOR_THEME: 2, DAILY_STEP_GOAL: 5000, WEATHER_UNITS: 1 },
       expect.any(Function),
       expect.any(Function)
     );

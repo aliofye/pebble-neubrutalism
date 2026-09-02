@@ -3,9 +3,9 @@
 ![CI](https://github.com/aliofye/pebble-neubrutalism/actions/workflows/ci.yml/badge.svg)
 
 A Pebble watchface with a bold, chunky **neubrutalism** aesthetic: a thick black
-outline, hard color blocks, and a pixel-style Jersey font. The bottom bar doubles
-as a battery meter or a daily-steps progress bar, and the whole palette can be
-swapped between several color themes.
+outline, hard color blocks, and a pixel-style Jersey font. It shows live weather,
+battery, and a daily-steps progress bar, and the whole palette can be swapped
+between several color themes.
 
 ## Hardware
 
@@ -19,17 +19,18 @@ type sizes adapt to each display.
 - **Neubrutalist clock** — a pixel-style Jersey time in an orange block on a
   pastel-yellow ground, framed by a thick black outline.
 - **Date** — short day/month, rendered in the matching font.
-- **Bottom progress bar** — choose what it shows: **battery level** or progress
-  toward your **daily step goal**.
+- **Weather** — live temperature in a mirrored bubble (Fahrenheit or Celsius).
+- **Battery & steps** — battery level and progress toward your **daily step goal**
+  shown as two stacked progress bars.
 - **Color themes** — Neubrutalism (default), Game Boy Green, Ocean Blue, Amber
   LCD, Monochrome, and Purple Pixel.
 - **12/24-hour time** — your preference, set on the phone.
 
 ## Settings (on your phone)
 
-Time format (12/24-hour), color theme, what the bottom bar represents (battery
-or steps), and the daily step target (1,000–100,000, default 10,000). Open the
-watchface's settings from the Pebble app to configure them.
+Time format (12/24-hour), color theme, daily step target (1,000–100,000, default
+10,000), and temperature units (Fahrenheit or Celsius). Open the watchface's
+settings from the Pebble app to configure them.
 
 ## Screenshots
 
