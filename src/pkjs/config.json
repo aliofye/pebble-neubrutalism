@@ -33,37 +33,6 @@
         ]
       },
       {
-        "type": "input",
-        "messageKey": "DAILY_STEP_GOAL",
-        "label": "Daily Step Target",
-        "description": "Enter a target between 1,000 and 100,000 steps.",
-        "defaultValue": "10000",
-        "attributes": {
-          "type": "number",
-          "min": 1000,
-          "max": 100000,
-          "step": 500,
-          "inputmode": "numeric",
-          "required": true
-        }
-      },
-      {
-        "type": "heading",
-        "defaultValue": "Progress Bars"
-      },
-      {
-        "type": "select",
-        "messageKey": "BARS_MODE",
-        "label": "Show",
-        "description": "Choose which progress bars to display.",
-        "defaultValue": 0,
-        "options": [
-          { "label": "Battery & Steps", "value": 0 },
-          { "label": "Battery Only", "value": 1 },
-          { "label": "Steps Only", "value": 2 }
-        ]
-      },
-      {
         "type": "heading",
         "defaultValue": "Weather"
       },
@@ -84,6 +53,37 @@
           { "label": "Fahrenheit (°F)", "value": 0 },
           { "label": "Celsius (°C)", "value": 1 }
         ]
+      },
+      {
+        "type": "heading",
+        "defaultValue": "Progress Bars"
+      },
+      {
+        "type": "select",
+        "messageKey": "BARS_MODE",
+        "label": "Show",
+        "description": "Choose which progress bars to display.",
+        "defaultValue": 0,
+        "options": [
+          { "label": "Battery & Steps", "value": 0 },
+          { "label": "Battery Only", "value": 1 },
+          { "label": "Steps Only", "value": 2 }
+        ]
+      },
+      {
+        "type": "input",
+        "messageKey": "DAILY_STEP_GOAL",
+        "label": "Daily Step Target",
+        "description": "Enter a target between 1,000 and 100,000 steps.",
+        "defaultValue": "10000",
+        "attributes": {
+          "type": "number",
+          "min": 1000,
+          "max": 100000,
+          "step": 500,
+          "inputmode": "numeric",
+          "required": true
+        }
       }
     ]
   },
