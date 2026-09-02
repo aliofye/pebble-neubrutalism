@@ -1,0 +1,129 @@
+# Ship a new version to the Pebble appstore when you publish a GitHub Release.
+#
+# Division of labour:
+#   - CloudPebble owns the LISTING (display name, description, screenshots, icons,
+#     category) and does the FIRST publish. That is the storefront.
+#   - This workflow only ships new *versions* (build + version + changelog). It never
+#     passes --name/--description/--icon/--screenshots, so it cannot overwrite the
+#     metadata you set in CloudPebble.
+#
+# Flow for every update after the CloudPebble first publish:
+#   1. Bump "version" in package.json (must be higher than what's live) and push to main.
+#   2. On GitHub, draft a Release: tag vX.Y.Z (matching package.json), write the notes.
+#      - Mark it "pre-release" to upload it STAGED/hidden (you flip it live yourself) —
+#        recommended for the first few runs so you can confirm nothing clobbered.
+#      - A normal (non-pre-release) release publishes it live immediately.
+#   3. Publish the Release -> CI builds the .pbw, sends it to the appstore with your
+#      release notes as the changelog, and attaches the .pbw to the Release.
+#
+# One-time prerequisites:
+#   - Do the first publish + listing setup in CloudPebble (this also links your dev
+#     account, which CLI publish requires).
+#   - Two secrets from firebase_oauth_storage.json
+#     (~/Library/Application Support/Pebble SDK/oauth_firebase/):
+#       PEBBLE_REFRESH_TOKEN    <- refresh_token    (durable)
+#       PEBBLE_FIREBASE_API_KEY <- firebase_api_key
+#     CI mints a fresh short-lived id token from these on every run (id tokens expire
+#     in ~1h, so storing one doesn't work). Same account as the CloudPebble listing.
+#   - Don't tag your CloudPebble v1 here; the first GitHub Release should be the first
+#     *bumped* version (e.g. 1.0.1), since the appstore rejects a re-used version.
+
+name: Publish Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write   # attach the .pbw to the release
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: production   # makes this env's secrets (and any protection rules) apply
+    env:
+      PEBBLE_REFRESH_TOKEN: ${{ secrets.PEBBLE_REFRESH_TOKEN }}
+      PEBBLE_FIREBASE_API_KEY: ${{ secrets.PEBBLE_FIREBASE_API_KEY }}
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      RELEASE_BODY: ${{ github.event.release.body }}
+      RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+    steps:
+      - uses: actions/checkout@v4   # checks out the release's tag
+
+      - name: Fail early if secrets are missing
+        run: |
+          if [ -z "$PEBBLE_REFRESH_TOKEN" ] || [ -z "$PEBBLE_FIREBASE_API_KEY" ]; then
+            echo "::error::PEBBLE_REFRESH_TOKEN and PEBBLE_FIREBASE_API_KEY must be set as environment secrets before publishing."
+            exit 1
+          fi
+
+      - name: Check tag matches package.json version
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          TAG="${RELEASE_TAG#v}"   # strip a leading v
+          echo "package.json=$PKG  tag=$TAG"
+          if [ "$PKG" != "$TAG" ]; then
+            echo "::error::Release tag ($RELEASE_TAG) != package.json version ($PKG). Align them and re-tag."
+            exit 1
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install JS deps + run tests
+        run: |
+          npm ci
+          npm test
+
+      - name: Set up uv (for pebble-tool)
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install pebble-tool + SDK
+        run: |
+          uv tool install pebble-tool
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+          # First run can prompt about analytics; </dev/null avoids a hang.
+          # VERIFY this line against your pebble-tool version in a manual run first.
+          pebble sdk install latest </dev/null
+
+      - name: Build the .pbw
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          ./scripts/build-watch.sh
+
+      - name: Write release notes to a file
+        run: |
+          if [ -n "$RELEASE_BODY" ]; then
+            printf '%s\n' "$RELEASE_BODY" > RELEASE_NOTES.md
+          else
+            printf '%s\n' "$RELEASE_TAG" > RELEASE_NOTES.md
+          fi
+          echo "Notes:"; cat RELEASE_NOTES.md
+
+      - name: Publish new version to the Pebble appstore
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          # Mint a fresh Firebase id token from the durable refresh token (id tokens
+          # expire in ~1h; a stored one goes stale and the preflight 401s).
+          RESP=$(curl -fsS "https://securetoken.googleapis.com/v1/token?key=${PEBBLE_FIREBASE_API_KEY}" \
+            -d "grant_type=refresh_token&refresh_token=${PEBBLE_REFRESH_TOKEN}")
+          ID_TOKEN=$(printf '%s' "$RESP" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{let j;try{j=JSON.parse(s)}catch(e){console.error('bad refresh response');process.exit(1)}if(!j.id_token){console.error('token refresh failed:',JSON.stringify(j));process.exit(1)}process.stdout.write(j.id_token)})")
+          echo "::add-mask::$ID_TOKEN"
+          # Pre-release -> staged/hidden (you flip it live). Normal release -> live now.
+          FLAG=""
+          if [ "$RELEASE_PRERELEASE" != "true" ]; then FLAG="--is-published"; fi
+          # No metadata flags on purpose: CloudPebble owns name/description/screenshots.
+          pebble publish \
+            --non-interactive \
+            --firebase-id-token "$ID_TOKEN" \
+            $FLAG \
+            --no-gif-all-platforms \
+            --release-notes "$(cat RELEASE_NOTES.md)"
+
+      - name: Attach the .pbw to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" build/pebble-neubrutalism.pbw --clobber

@@ -1,15 +1,29 @@
 {
   "name": "neubrutalism",
-  "author": "Yorks0n",
+  "author": "aliofye",
   "version": "1.2.0",
   "keywords": [
     "brutalism",
     "neubrutalism",
-    "brutal"
+    "brutal",
+    "pebble-app"
   ],
   "private": true,
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11"
+  },
   "dependencies": {
     "@rebble/clay": "^1.0.10"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "node"
   },
   "pebble": {
     "displayName": "neubrutalism",

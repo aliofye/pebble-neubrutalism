@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: JS tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --coverage
+
+  watch:
+    name: Watch build + C tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: astral-sh/setup-uv@v5
+      - name: Install pebble-tool + SDK
+        run: |
+          uv tool install pebble-tool
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+          # First run can prompt about analytics; </dev/null avoids a hang.
+          pebble sdk install latest </dev/null
+      - name: Run host C tests
+        run: ./scripts/test-c.sh
+      - name: Build the .pbw
+        run: ./scripts/build-watch.sh
