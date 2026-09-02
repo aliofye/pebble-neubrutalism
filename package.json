@@ -1,5 +1,5 @@
 {
-  "name": "neubrutalism",
+  "name": "neubrutalism+",
   "author": "aliofye",
   "version": "1.2.0",
   "keywords": [
@@ -26,7 +26,7 @@
     "testEnvironment": "node"
   },
   "pebble": {
-    "displayName": "neubrutalism",
+    "displayName": "neubrutalism+",
     "uuid": "469c06b3-67cf-4135-9e4f-15ab0900ddbe",
     "sdkVersion": "3",
     "enableMultiJS": true,

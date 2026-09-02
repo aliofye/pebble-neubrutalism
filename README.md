@@ -1,4 +1,4 @@
-# Neubrutalism — a Pebble watchface
+# Neubrutalism+ — a Pebble watchface
 
 ![CI](https://github.com/aliofye/pebble-neubrutalism/actions/workflows/ci.yml/badge.svg)
 

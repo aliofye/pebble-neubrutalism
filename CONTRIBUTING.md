@@ -1,6 +1,6 @@
-# Contributing to Neubrutalism
+# Contributing to Neubrutalism+
 
-Thanks for your interest in improving Neubrutalism! This is a small, focused Pebble
+Thanks for your interest in improving Neubrutalism+! This is a small, focused Pebble
 watchface — contributions of all sizes are welcome.
 
 ## Project layout

@@ -1,4 +1,4 @@
-# Publishing Neubrutalism to the Pebble Appstore
+# Publishing Neubrutalism+ to the Pebble Appstore
 
 The revived Pebble appstore lives at **apps.repebble.com** and is served through
 **Rebble's developer portal** ([dev-portal.rebble.io](https://dev-portal.rebble.io/)).
@@ -49,7 +49,7 @@ shots in `screenshot/` (basalt, aplite, emery) — reuse those.
 ## 3. Create the listing (dev-portal.rebble.io)
 
 1. Log in (create the account if this is your first upload).
-2. **Add a Watchface** → enter the title (**Neubrutalism**), the **source-code URL**
+2. **Add a Watchface** → enter the title (**Neubrutalism+**), the **source-code URL**
    (your GitHub repo), and the **support email**.
 3. **Category** — a neubrutalist watchface sits naturally under *Just a Clock* or
    *Everything Else*.
