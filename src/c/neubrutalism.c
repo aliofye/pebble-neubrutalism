@@ -59,32 +59,64 @@ typedef struct {
   GColor battery_frame;
   GColor battery_bar;
   GColor ink;
+  bool battery_status;
+  GColor battery_low;
+  GColor battery_mid;
+  GColor battery_high;
 } ColorTheme;
 
 static const ColorTheme s_color_themes[THEME_COUNT] = {
   [THEME_NEUBRUTALISM] = {
-    GColorPastelYellow, GColorOrange, GColorChromeYellow,
-    GColorPastelYellow, GColorLavenderIndigo, GColorBlack,
+    .background = GColorPastelYellow,
+    .body = GColorOrange,
+    .accent = GColorChromeYellow,
+    .battery_frame = GColorPastelYellow,
+    .battery_bar = GColorLavenderIndigo,
+    .ink = GColorBlack,
+    .battery_status = true,
+    .battery_low = GColorRed,
+    .battery_mid = GColorChromeYellow,
+    .battery_high = GColorMayGreen,
   },
   [THEME_GAME_BOY_GREEN] = {
-    GColorLightGray, GColorMayGreen, GColorMintGreen,
-    GColorLightGray, GColorDarkGreen, GColorBlack,
+    .background = GColorLightGray,
+    .body = GColorMayGreen,
+    .accent = GColorMintGreen,
+    .battery_frame = GColorLightGray,
+    .battery_bar = GColorDarkGreen,
+    .ink = GColorBlack,
   },
   [THEME_OCEAN_BLUE] = {
-    GColorCeleste, GColorPictonBlue, GColorElectricBlue,
-    GColorCeleste, GColorCobaltBlue, GColorBlack,
+    .background = GColorCeleste,
+    .body = GColorPictonBlue,
+    .accent = GColorElectricBlue,
+    .battery_frame = GColorCeleste,
+    .battery_bar = GColorCobaltBlue,
+    .ink = GColorBlack,
   },
   [THEME_AMBER_LCD] = {
-    GColorPastelYellow, GColorChromeYellow, GColorIcterine,
-    GColorPastelYellow, GColorOrange, GColorBlack,
+    .background = GColorPastelYellow,
+    .body = GColorChromeYellow,
+    .accent = GColorIcterine,
+    .battery_frame = GColorPastelYellow,
+    .battery_bar = GColorOrange,
+    .ink = GColorBlack,
   },
   [THEME_MONOCHROME] = {
-    GColorLightGray, GColorWhite, GColorWhite,
-    GColorLightGray, GColorDarkGray, GColorBlack,
+    .background = GColorLightGray,
+    .body = GColorWhite,
+    .accent = GColorWhite,
+    .battery_frame = GColorLightGray,
+    .battery_bar = GColorDarkGray,
+    .ink = GColorBlack,
   },
   [THEME_PURPLE_PIXEL] = {
-    GColorRichBrilliantLavender, GColorLavenderIndigo, GColorBabyBlueEyes,
-    GColorRichBrilliantLavender, GColorIndigo, GColorBlack,
+    .background = GColorRichBrilliantLavender,
+    .body = GColorLavenderIndigo,
+    .accent = GColorBabyBlueEyes,
+    .battery_frame = GColorRichBrilliantLavender,
+    .battery_bar = GColorIndigo,
+    .ink = GColorBlack,
   },
 };
 
@@ -93,6 +125,7 @@ static const ColorTheme *prv_theme(void) {
 }
 
 static const int16_t ORANGE_STROKE = 3;
+static const int16_t METRIC_SHADOW_OFFSET = 3;
 
 static const GPathInfo s_polygon_info_200 = {
   .num_points = 13,
@@ -285,14 +318,68 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
   }
 }
 
+static void prv_draw_metric_bar(GContext *ctx, const ColorTheme *theme, GRect box,
+                                int16_t stroke, int16_t percent, GColor fill) {
+  // Black base/shadow strip behind the pastel box, poking out right and below
+  GRect strip = box;
+  strip.origin.x += 2;
+  strip.origin.y += METRIC_SHADOW_OFFSET;
+  strip.size.w += 2;
+  graphics_context_set_fill_color(ctx, theme->ink);
+  graphics_fill_rect(ctx, strip, 0, GCornerNone);
+
+  // Ink outline box
+  graphics_context_set_fill_color(ctx, theme->ink);
+  graphics_fill_rect(ctx, box, 0, GCornerNone);
+
+  // Pastel frame inset
+  const int16_t frame_stroke = stroke * 2;
+  GRect frame = box;
+  frame.origin.x += frame_stroke;
+  frame.origin.y += frame_stroke;
+  frame.size.w -= 2 * frame_stroke;
+  frame.size.h -= 2 * frame_stroke;
+  graphics_context_set_fill_color(ctx, theme->battery_frame);
+  graphics_fill_rect(ctx, frame, 0, GCornerNone);
+
+  // Black core
+  GRect core = frame;
+  core.origin.x += 3;
+  core.origin.y += 3;
+  core.size.w -= 6;
+  core.size.h -= 6;
+  graphics_context_set_fill_color(ctx, theme->ink);
+  graphics_fill_rect(ctx, core, 0, GCornerNone);
+
+  // Colored progress bar
+  GRect bar = core;
+  bar.origin.x += 3;
+  bar.origin.y += 3;
+  bar.size.w -= 6;
+  bar.size.h -= 6;
+  bar.size.w = (int16_t)((bar.size.w * percent) / 100);
+  graphics_context_set_fill_color(ctx, fill);
+  graphics_fill_rect(ctx, bar, 0, GCornerNone);
+}
+
+static GColor prv_battery_color(const ColorTheme *theme, int percent) {
+  if (!theme->battery_status) {
+    return theme->battery_bar;
+  }
+  if (percent < 20) {
+    return theme->battery_low;
+  }
+  if (percent < 50) {
+    return theme->battery_mid;
+  }
+  return theme->battery_high;
+}
+
 static void prv_canvas_update(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   const int16_t w = bounds.size.w;
   const int16_t stroke = ORANGE_STROKE;
   const ColorTheme *theme = prv_theme();
-  const int bar_percent = s_bottom_bar_metric == BOTTOM_BAR_DAILY_STEPS
-      ? s_step_goal_percent
-      : s_battery_percent;
 
   // Keep the inner orange area centered and expand the border outward
   GRect base_rect = prv_orange_rect_for_bounds(bounds);
@@ -321,6 +408,9 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
   graphics_context_set_fill_color(ctx, theme->body);
   graphics_fill_rect(ctx, inner_rect, 0, GCornerNone);
 
+  // Bottom of the time box including its shadow
+  const int16_t time_bottom = outer_rect.origin.y + outer_rect.size.h + w / 30;
+
   // Polygon for 200px wide canvases
   if (w == 200 && s_polygon_200) {
     graphics_context_set_fill_color(ctx, theme->accent);
@@ -328,102 +418,34 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_200.points, s_polygon_info_200.num_points, 4);
 
-    // Base black strip behind the pastel rectangle
-    graphics_context_set_fill_color(ctx, theme->ink);
-    graphics_fill_rect(ctx, GRect(26, 170, 160, 29), 0, GCornerNone);
-
-    // Pastel yellow box with the same bold outline treatment as the orange rect
-    GRect pastel_rect = GRect(22, 150, 155, 45);
-    graphics_context_set_fill_color(ctx, theme->ink);
-    graphics_fill_rect(ctx, pastel_rect, 0, GCornerNone);
-
-    const int16_t pastel_stroke = stroke * 2;
-    GRect pastel_inner = pastel_rect;
-    pastel_inner.origin.x += pastel_stroke;
-    pastel_inner.origin.y += pastel_stroke;
-    pastel_inner.size.w -= 2 * pastel_stroke;
-    pastel_inner.size.h -= 2 * pastel_stroke;
-    graphics_context_set_fill_color(ctx, theme->battery_frame);
-    graphics_fill_rect(ctx, pastel_inner, 0, GCornerNone);
-
-    GRect pastel_core = pastel_inner;
-    pastel_core.origin.x += 4;
-    pastel_core.origin.y += 4;
-    pastel_core.size.w -= 8;
-    pastel_core.size.h -= 8;
-    graphics_context_set_fill_color(ctx, theme->ink);
-    graphics_fill_rect(ctx, pastel_core, 0, GCornerNone);
-
-    GRect bar_bounds = pastel_core;
-    bar_bounds.origin.x += 4;
-    bar_bounds.origin.y += 4;
-    bar_bounds.size.w -= 8;
-    bar_bounds.size.h -= 8;
-    GRect bar_rect = bar_bounds;
-    bar_rect.size.w = (int16_t)((bar_bounds.size.w * bar_percent) / 100);
-    graphics_context_set_fill_color(ctx, theme->battery_bar);
-    graphics_fill_rect(ctx, bar_rect, 0, GCornerNone);
-
-    // Decorative right-angled outline
-    const GPoint deco_points[] = {
-      {150, 140},
-      {186, 140},
-      {186, 213},
-      {100, 213},
-    };
-    graphics_context_set_fill_color(ctx, theme->ink);
-    prv_draw_axis_aligned_outline(ctx, deco_points, ARRAY_LENGTH(deco_points), 4);
+    // Battery bar (top) and step-goal bar (bottom), stacked and vertically
+    // centered between the time box shadow and the bottom of the screen
+    const int16_t bar_h = 32;
+    const int16_t bar_gap = 8;
+    const int16_t stack_h = bar_h * 2 + bar_gap + METRIC_SHADOW_OFFSET;
+    const int16_t avail_h = bounds.size.h - time_bottom;
+    const int16_t stack_top = time_bottom + (avail_h - stack_h) / 2;
+    prv_draw_metric_bar(ctx, theme, GRect(22, stack_top, 155, bar_h), stroke, s_battery_percent,
+                        prv_battery_color(theme, s_battery_percent));
+    prv_draw_metric_bar(ctx, theme, GRect(22, stack_top + bar_h + bar_gap, 155, bar_h),
+                        stroke, s_step_goal_percent, GColorWhite);
   } else if (s_polygon_144) {
     graphics_context_set_fill_color(ctx, theme->accent);
     gpath_draw_filled(ctx, s_polygon_144);
     graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_144.points, s_polygon_info_144.num_points, 4);
 
-    // Base black strip behind the pastel rectangle (scaled for 144x168)
-    graphics_context_set_fill_color(ctx, theme->ink);
-    graphics_fill_rect(ctx, GRect(19, 128, 115, 24), 0, GCornerNone);
-
-    // Scaled pastel yellow box with the same outline treatment
-    GRect pastel_rect = GRect(16, 111, 112, 38);
-    graphics_context_set_fill_color(ctx, theme->ink);
-    graphics_fill_rect(ctx, pastel_rect, 0, GCornerNone);
-
-    const int16_t pastel_stroke = stroke * 2;
-    GRect pastel_inner = pastel_rect;
-    pastel_inner.origin.x += pastel_stroke;
-    pastel_inner.origin.y += pastel_stroke;
-    pastel_inner.size.w -= 2 * pastel_stroke;
-    pastel_inner.size.h -= 2 * pastel_stroke;
-    graphics_context_set_fill_color(ctx, theme->battery_frame);
-    graphics_fill_rect(ctx, pastel_inner, 0, GCornerNone);
-
-    GRect pastel_core = pastel_inner;
-    pastel_core.origin.x += 3;
-    pastel_core.origin.y += 3;
-    pastel_core.size.w -= 6;
-    pastel_core.size.h -= 6;
-    graphics_context_set_fill_color(ctx, theme->ink);
-    graphics_fill_rect(ctx, pastel_core, 0, GCornerNone);
-
-    GRect bar_bounds = pastel_core;
-    bar_bounds.origin.x += 3;
-    bar_bounds.origin.y += 3;
-    bar_bounds.size.w -= 6;
-    bar_bounds.size.h -= 6;
-    GRect bar_rect = bar_bounds;
-    bar_rect.size.w = (int16_t)((bar_bounds.size.w * bar_percent) / 100);
-    graphics_context_set_fill_color(ctx, theme->battery_bar);
-    graphics_fill_rect(ctx, bar_rect, 0, GCornerNone);
-
-    // Decorative right-angled outline scaled for 144x168
-    const GPoint deco_points[] = {
-      {108, 103},
-      {134, 103},
-      {134, 160},
-      {72, 160},
-    };
-    graphics_context_set_fill_color(ctx, theme->ink);
-    prv_draw_axis_aligned_outline(ctx, deco_points, ARRAY_LENGTH(deco_points), 3);
+    // Battery bar (top) and step-goal bar (bottom), stacked and vertically
+    // centered between the time box shadow and the bottom of the screen
+    const int16_t bar_h = 24;
+    const int16_t bar_gap = 6;
+    const int16_t stack_h = bar_h * 2 + bar_gap + METRIC_SHADOW_OFFSET;
+    const int16_t avail_h = bounds.size.h - time_bottom;
+    const int16_t stack_top = time_bottom + (avail_h - stack_h) / 2;
+    prv_draw_metric_bar(ctx, theme, GRect(16, stack_top, 112, bar_h), stroke, s_battery_percent,
+                        prv_battery_color(theme, s_battery_percent));
+    prv_draw_metric_bar(ctx, theme, GRect(16, stack_top + bar_h + bar_gap, 112, bar_h),
+                        stroke, s_step_goal_percent, GColorWhite);
   }
 
   const size_t time_len = strlen(s_time_buffer);
