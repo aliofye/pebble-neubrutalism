@@ -26,8 +26,8 @@
     "testEnvironment": "node"
   },
   "pebble": {
-    "displayName": "neubrutalism+",
-    "uuid": "469c06b3-67cf-4135-9e4f-15ab0900ddbe",
+    "displayName": "Neubrutalism+",
+    "uuid": "673bed2f-68cc-4428-9610-cf5d66d182aa",
     "sdkVersion": "3",
     "enableMultiJS": true,
     "targetPlatforms": [

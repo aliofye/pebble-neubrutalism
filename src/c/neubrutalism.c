@@ -16,6 +16,10 @@ static char s_date_buffer[8];
 static int s_current_hour;
 static GPath *s_polygon_200;
 static GPath *s_polygon_144;
+static GPath *s_polygon_200_weather;
+static GPath *s_polygon_144_weather;
+static TextLayer *s_weather_layer;
+static char s_weather_buffer[8] = "100°F";
 static int s_battery_percent = 100;
 static int s_step_goal_percent;
 static int32_t s_daily_step_goal;
@@ -161,6 +165,44 @@ static const GPathInfo s_polygon_info_144 = {
     {126, 41},
     {126, 33},
     {126, 33},
+    {72, 33},
+  },
+};
+
+static const GPathInfo s_polygon_info_200_weather = {
+  .num_points = 13,
+  .points = (GPoint[]) {
+    {100, 12},
+    {10, 12},
+    {10, 45},
+    {13, 45},
+    {13, 48},
+    {16, 48},
+    {16, 51},
+    {19, 51},
+    {19, 55},
+    {25, 55},
+    {25, 45},
+    {25, 45},
+    {100, 45},
+  },
+};
+
+static const GPathInfo s_polygon_info_144_weather = {
+  .num_points = 13,
+  .points = (GPoint[]) {
+    {72, 9},
+    {7, 9},
+    {7, 33},
+    {9, 33},
+    {9, 35},
+    {12, 35},
+    {12, 38},
+    {14, 38},
+    {14, 41},
+    {18, 41},
+    {18, 33},
+    {18, 33},
     {72, 33},
   },
 };
@@ -418,6 +460,12 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_200.points, s_polygon_info_200.num_points, 4);
 
+    // Weather bubble: white fill, black border, mirrors the date bubble
+    graphics_context_set_fill_color(ctx, GColorWhite);
+    gpath_draw_filled(ctx, s_polygon_200_weather);
+    graphics_context_set_fill_color(ctx, theme->ink);
+    prv_draw_axis_aligned_outline(ctx, s_polygon_info_200_weather.points, s_polygon_info_200_weather.num_points, 4);
+
     // Battery bar (top) and step-goal bar (bottom), stacked and vertically
     // centered between the time box shadow and the bottom of the screen
     const int16_t bar_h = 32;
@@ -434,6 +482,12 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     gpath_draw_filled(ctx, s_polygon_144);
     graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_144.points, s_polygon_info_144.num_points, 4);
+
+    // Weather bubble: white fill, black border, mirrors the date bubble
+    graphics_context_set_fill_color(ctx, GColorWhite);
+    gpath_draw_filled(ctx, s_polygon_144_weather);
+    graphics_context_set_fill_color(ctx, theme->ink);
+    prv_draw_axis_aligned_outline(ctx, s_polygon_info_144_weather.points, s_polygon_info_144_weather.num_points, 4);
 
     // Battery bar (top) and step-goal bar (bottom), stacked and vertically
     // centered between the time box shadow and the bottom of the screen
@@ -504,8 +558,10 @@ static void prv_window_load(Window *window) {
 
   if (bounds.size.w == 200) {
     s_polygon_200 = gpath_create(&s_polygon_info_200);
+    s_polygon_200_weather = gpath_create(&s_polygon_info_200_weather);
   } else {
     s_polygon_144 = gpath_create(&s_polygon_info_144);
+    s_polygon_144_weather = gpath_create(&s_polygon_info_144_weather);
   }
 
   s_canvas_layer = layer_create(bounds);
@@ -524,12 +580,23 @@ static void prv_window_load(Window *window) {
   text_layer_set_text_color(s_date_layer, prv_theme()->ink);
   text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
 
+  // Weather bubble mirrors the date bubble on the left of the time box
+  const int16_t weather_x = is_200 ? 3 : 3;
+  const int16_t weather_y = is_200 ? 0 : 3;
+  s_weather_layer = text_layer_create(GRect(weather_x, weather_y, date_w, date_h));
+  text_layer_set_background_color(s_weather_layer, GColorClear);
+  text_layer_set_text_color(s_weather_layer, GColorBlack);
+  text_layer_set_text_alignment(s_weather_layer, GTextAlignmentCenter);
+  text_layer_set_text(s_weather_layer, s_weather_buffer);
+
   const uint32_t font_res = is_200 ? RESOURCE_ID_FONT_JERSEY_38 : RESOURCE_ID_FONT_JERSEY_25;
   if (!s_date_font) {
     s_date_font = fonts_load_custom_font(resource_get_handle(font_res));
   }
   text_layer_set_font(s_date_layer, s_date_font);
   layer_add_child(window_layer, text_layer_get_layer(s_date_layer));
+  text_layer_set_font(s_weather_layer, s_date_font);
+  layer_add_child(window_layer, text_layer_get_layer(s_weather_layer));
 
   prv_update_time();
 }
@@ -543,12 +610,22 @@ static void prv_window_unload(Window *window) {
     gpath_destroy(s_polygon_144);
     s_polygon_144 = NULL;
   }
+  if (s_polygon_200_weather) {
+    gpath_destroy(s_polygon_200_weather);
+    s_polygon_200_weather = NULL;
+  }
+  if (s_polygon_144_weather) {
+    gpath_destroy(s_polygon_144_weather);
+    s_polygon_144_weather = NULL;
+  }
   if (s_date_font) {
     fonts_unload_custom_font(s_date_font);
     s_date_font = NULL;
   }
   text_layer_destroy(s_date_layer);
   s_date_layer = NULL;
+  text_layer_destroy(s_weather_layer);
+  s_weather_layer = NULL;
   layer_destroy(s_canvas_layer);
 }
 
