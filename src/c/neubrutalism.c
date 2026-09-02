@@ -587,7 +587,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
 
   // Polygon for 200px wide canvases
   if (w == 200 && s_polygon_200) {
-    graphics_context_set_fill_color(ctx, theme->accent);
+    graphics_context_set_fill_color(ctx, GColorWhite);
     gpath_draw_filled(ctx, s_polygon_200);
     graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_200.points, s_polygon_info_200.num_points, 4);
@@ -624,7 +624,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
                           stroke, s_step_goal_percent, GColorWhite);
     }
   } else if (s_polygon_144) {
-    graphics_context_set_fill_color(ctx, theme->accent);
+    graphics_context_set_fill_color(ctx, GColorWhite);
     gpath_draw_filled(ctx, s_polygon_144);
     graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_144.points, s_polygon_info_144.num_points, 4);
