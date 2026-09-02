@@ -12,5 +12,6 @@ typedef enum {
 
 void pet_init(void);
 void pet_deinit(void);
+void pet_cycle_animation(void);
 GSize pet_size(void);
 void pet_draw(GContext *ctx, GPoint origin, PetMood mood, uint32_t tick);

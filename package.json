@@ -127,6 +127,206 @@
           "type": "png",
           "name": "PET_FRAME_09",
           "file": "pet/frames/frame_09.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_10",
+          "file": "pet/frames/frame_10.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_11",
+          "file": "pet/frames/frame_11.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_12",
+          "file": "pet/frames/frame_12.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_13",
+          "file": "pet/frames/frame_13.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_14",
+          "file": "pet/frames/frame_14.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_15",
+          "file": "pet/frames/frame_15.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_16",
+          "file": "pet/frames/frame_16.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_17",
+          "file": "pet/frames/frame_17.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_18",
+          "file": "pet/frames/frame_18.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_19",
+          "file": "pet/frames/frame_19.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_20",
+          "file": "pet/frames/frame_20.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_21",
+          "file": "pet/frames/frame_21.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_22",
+          "file": "pet/frames/frame_22.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_23",
+          "file": "pet/frames/frame_23.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_24",
+          "file": "pet/frames/frame_24.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_25",
+          "file": "pet/frames/frame_25.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_26",
+          "file": "pet/frames/frame_26.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_27",
+          "file": "pet/frames/frame_27.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_28",
+          "file": "pet/frames/frame_28.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_29",
+          "file": "pet/frames/frame_29.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_30",
+          "file": "pet/frames/frame_30.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_31",
+          "file": "pet/frames/frame_31.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_32",
+          "file": "pet/frames/frame_32.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_33",
+          "file": "pet/frames/frame_33.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_34",
+          "file": "pet/frames/frame_34.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_35",
+          "file": "pet/frames/frame_35.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_36",
+          "file": "pet/frames/frame_36.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_37",
+          "file": "pet/frames/frame_37.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_38",
+          "file": "pet/frames/frame_38.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_39",
+          "file": "pet/frames/frame_39.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_40",
+          "file": "pet/frames/frame_40.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_41",
+          "file": "pet/frames/frame_41.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_42",
+          "file": "pet/frames/frame_42.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_43",
+          "file": "pet/frames/frame_43.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_44",
+          "file": "pet/frames/frame_44.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_45",
+          "file": "pet/frames/frame_45.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_46",
+          "file": "pet/frames/frame_46.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_47",
+          "file": "pet/frames/frame_47.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_48",
+          "file": "pet/frames/frame_48.png"
+        },
+        {
+          "type": "png",
+          "name": "PET_FRAME_49",
+          "file": "pet/frames/frame_49.png"
         }
       ]
     }

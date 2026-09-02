@@ -14,6 +14,10 @@
 // Set to 1 while developing, 0 for production builds.
 #define DEBUG_COLOR_CYCLE 0
 
+// Debug: cycle the pet through every sprite animation (idle, gesture, attack,
+// walk, death) so we can review the art. Set to 0 for normal behavior.
+#define DEBUG_ANIM_CYCLE 1
+
 static Window *s_window;
 static Layer *s_canvas_layer;
 static TextLayer *s_date_layer;
@@ -598,8 +602,20 @@ static void prv_pet_tick(void *data) {
   if (s_canvas_layer) {
     layer_mark_dirty(s_canvas_layer);
   }
-  s_pet_timer = app_timer_register(500, prv_pet_tick, NULL);
+  s_pet_timer = app_timer_register(300, prv_pet_tick, NULL);
 }
+
+#if DEBUG_ANIM_CYCLE
+static AppTimer *s_anim_cycle_timer;
+
+static void prv_anim_cycle_tick(void *data) {
+  pet_cycle_animation();
+  if (s_canvas_layer) {
+    layer_mark_dirty(s_canvas_layer);
+  }
+  s_anim_cycle_timer = app_timer_register(3000, prv_anim_cycle_tick, NULL);
+}
+#endif
 
 static void prv_canvas_update(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
@@ -773,6 +789,9 @@ static void prv_window_load(Window *window) {
   pet_init();
   s_pet_tick = 0;
   s_pet_timer = app_timer_register(300, prv_pet_tick, NULL);
+#if DEBUG_ANIM_CYCLE
+  s_anim_cycle_timer = app_timer_register(3000, prv_anim_cycle_tick, NULL);
+#endif
 #if DEBUG_COLOR_CYCLE
   s_weather_available = true;
   prv_update_weather_text();
@@ -809,6 +828,12 @@ if (s_pet_timer) {
     app_timer_cancel(s_pet_timer);
     s_pet_timer = NULL;
   }
+#if DEBUG_ANIM_CYCLE
+  if (s_anim_cycle_timer) {
+    app_timer_cancel(s_anim_cycle_timer);
+    s_anim_cycle_timer = NULL;
+  }
+#endif
   pet_deinit();
 #if DEBUG_COLOR_CYCLE
   if (s_debug_cycle_timer) {
