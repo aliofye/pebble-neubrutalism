@@ -37,9 +37,21 @@ settings from the Pebble app to configure them.
 
 ## Screenshots
 
-| Basalt | Aplite | Theme |
-| --- | --- | --- |
-| ![Neubrutalism on Basalt](docs/screenshots/screenshot_basalt.png) | ![Neubrutalism on Aplite](docs/screenshots/screenshot_aplite.png) | ![Theme](docs/screenshots/theme_neubrutalism.png) |
+**Default Neubrutalism theme** (battery & steps, weather on, °F):
+
+![Default](docs/screenshots/theme_neubrutalism.png)
+
+**Color themes** — each captures the same layout, just different palettes:
+
+| Neubrutalism | Game Boy Green | Ocean Blue | Amber LCD | Monochrome | Purple Pixel |
+| --- | --- | --- | --- | --- | --- |
+| ![Neubrutalism](docs/screenshots/theme_neubrutalism.png) | ![Game Boy Green](docs/screenshots/theme_gameboy.png) | ![Ocean Blue](docs/screenshots/theme_ocean.png) | ![Amber LCD](docs/screenshots/theme_amber.png) | ![Monochrome](docs/screenshots/theme_mono.png) | ![Purple Pixel](docs/screenshots/theme_purple.png) |
+
+**Setting variations** (Neubrutalism theme):
+
+| Weather hidden | Battery only |
+| --- | --- |
+| ![Weather hidden](docs/screenshots/weather_off.png) | ![Battery only](docs/screenshots/bars_battery_only.png) |
 
 ## Build & run
 
