@@ -8,14 +8,10 @@
 //
 // Sprite sheet layout: 10 frames per animation, 5 animations per color.
 // Color 1 animations, in sheet row order: idle, gesture, attack, walk, death.
+// DEBUG_ANIM_CYCLE comes from pet.h.
 
 #define PET_FRAME_COUNT 10
 #define PET_FRAME_SIZE 64
-#define PET_ANIM_COUNT 5
-
-// DEBUG: cycle through every animation so we can review the sprite art.
-// Set to 0 and wire moods to specific animations for normal behavior.
-#define DEBUG_ANIM_CYCLE 1
 
 static const uint32_t s_frame_resources[PET_ANIM_COUNT][PET_FRAME_COUNT] = {
   { RESOURCE_ID_PET_FRAME_00, RESOURCE_ID_PET_FRAME_01, RESOURCE_ID_PET_FRAME_02,
@@ -40,58 +36,64 @@ static const uint32_t s_frame_resources[PET_ANIM_COUNT][PET_FRAME_COUNT] = {
     RESOURCE_ID_PET_FRAME_49 },  // death
 };
 
-static GBitmap *s_frames[PET_ANIM_COUNT][PET_FRAME_COUNT];
-static bool s_loaded;
-static uint8_t s_anim_index;
+static GBitmap *s_frames[PET_FRAME_COUNT];
+static PetAnimation s_current = PET_ANIM_IDLE;
+static bool s_resident;
 
-void pet_init(void) {
-  for (int a = 0; a < PET_ANIM_COUNT; a++) {
-    for (int i = 0; i < PET_FRAME_COUNT; i++) {
-      s_frames[a][i] = gbitmap_create_with_resource(s_frame_resources[a][i]);
+static void prv_unload_frames(void) {
+  if (!s_resident) {
+    return;
+  }
+  for (int i = 0; i < PET_FRAME_COUNT; i++) {
+    if (s_frames[i]) {
+      gbitmap_destroy(s_frames[i]);
+      s_frames[i] = NULL;
     }
   }
-  s_anim_index = 0;
-  s_loaded = true;
+  s_resident = false;
+}
+
+static void prv_load_frames(PetAnimation anim) {
+  if (s_resident && s_current == anim) {
+    return;
+  }
+  prv_unload_frames();
+  for (int i = 0; i < PET_FRAME_COUNT; i++) {
+    s_frames[i] = gbitmap_create_with_resource(s_frame_resources[anim][i]);
+  }
+  s_current = anim;
+  s_resident = true;
+}
+
+void pet_init(void) {
+  prv_load_frames(s_current);
 }
 
 void pet_deinit(void) {
-  for (int a = 0; a < PET_ANIM_COUNT; a++) {
-    for (int i = 0; i < PET_FRAME_COUNT; i++) {
-      if (s_frames[a][i]) {
-        gbitmap_destroy(s_frames[a][i]);
-        s_frames[a][i] = NULL;
-      }
-    }
-  }
-  s_loaded = false;
+  prv_unload_frames();
 }
 
-GSize pet_size(void) {
-  return GSize(PET_FRAME_SIZE, PET_FRAME_SIZE);
+void pet_set_animation(PetAnimation anim) {
+  prv_load_frames(anim);
 }
 
 #if DEBUG_ANIM_CYCLE
 // Advance to the next animation (called periodically by the debug timer).
 void pet_cycle_animation(void) {
-  if (!s_loaded) {
-    return;
-  }
-  s_anim_index = (s_anim_index + 1) % PET_ANIM_COUNT;
+  prv_load_frames((s_current + 1) % PET_ANIM_COUNT);
 }
 #endif
 
-void pet_draw(GContext *ctx, GPoint origin, PetMood mood, uint32_t tick) {
-  if (!s_loaded) {
+GSize pet_size(void) {
+  return GSize(PET_FRAME_SIZE, PET_FRAME_SIZE);
+}
+
+void pet_draw(GContext *ctx, GPoint origin, uint32_t tick) {
+  if (!s_resident) {
     return;
   }
-  uint8_t anim = s_anim_index;
-#if !DEBUG_ANIM_CYCLE
-  // Map moods to animations once we pick final art.
-  anim = 0;
-#endif
-  // Advance one frame per tick: 10-frame loop (~3s at 300ms ticks).
-  const uint32_t idx = tick % PET_FRAME_COUNT;
-  const GBitmap *frame = s_frames[anim][idx];
+  // Advance one frame per tick: 10-frame loop.
+  const GBitmap *frame = s_frames[tick % PET_FRAME_COUNT];
   if (!frame) {
     return;
   }

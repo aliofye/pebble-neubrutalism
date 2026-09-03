@@ -14,10 +14,6 @@
 // Set to 1 while developing, 0 for production builds.
 #define DEBUG_COLOR_CYCLE 0
 
-// Debug: cycle the pet through every sprite animation (idle, gesture, attack,
-// walk, death) so we can review the art. Set to 0 for normal behavior.
-#define DEBUG_ANIM_CYCLE 1
-
 static Window *s_window;
 static Layer *s_canvas_layer;
 static TextLayer *s_date_layer;
@@ -51,6 +47,8 @@ static uint8_t s_color_theme;
 static uint8_t s_bars_mode;
 static AppTimer *s_pet_timer;
 static uint32_t s_pet_tick;
+static Layer *s_pet_layer;
+static PetAnimation s_pet_anim = PET_ANIM_IDLE;
 
 enum {
   PERSIST_KEY_TIME_FORMAT = 1,
@@ -166,7 +164,6 @@ static const ColorTheme *prv_theme(void) {
 }
 
 static const int16_t ORANGE_STROKE = 3;
-static const int16_t METRIC_SHADOW_OFFSET = 3;
 
 static const GPathInfo s_polygon_info_200 = {
   .num_points = 13,
@@ -306,6 +303,8 @@ static void prv_apply_weather_visibility(void) {
   }
 }
 
+static void prv_pet_update_animation(void);
+
 #if DEBUG_COLOR_CYCLE
 static void prv_debug_cycle_tick(void *data) {
   s_weather_code = s_debug_weather_codes[s_debug_weather_index];
@@ -322,9 +321,7 @@ static void prv_debug_cycle_tick(void *data) {
 
 static void prv_battery_handler(BatteryChargeState state) {
   s_battery_percent = state.charge_percent;
-  if (s_canvas_layer) {
-    layer_mark_dirty(s_canvas_layer);
-  }
+  prv_pet_update_animation();
 }
 
 static void prv_update_step_progress(void) {
@@ -458,66 +455,12 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
     }
   }
 
+  // Weather temp/code (and thus availability) may have changed above.
+  prv_pet_update_animation();
+
   if (dict_find(iter, MESSAGE_KEY_SETTINGS_REQUEST)) {
     prv_send_settings();
   }
-}
-
-static void prv_draw_metric_bar(GContext *ctx, const ColorTheme *theme, GRect box,
-                                int16_t stroke, int16_t percent, GColor fill) {
-  // Black base/shadow strip behind the pastel box, poking out right and below
-  GRect strip = box;
-  strip.origin.x += 2;
-  strip.origin.y += METRIC_SHADOW_OFFSET;
-  strip.size.w += 2;
-  graphics_context_set_fill_color(ctx, theme->ink);
-  graphics_fill_rect(ctx, strip, 0, GCornerNone);
-
-  // Ink outline box
-  graphics_context_set_fill_color(ctx, theme->ink);
-  graphics_fill_rect(ctx, box, 0, GCornerNone);
-
-  // Pastel frame inset
-  const int16_t frame_stroke = stroke * 2;
-  GRect frame = box;
-  frame.origin.x += frame_stroke;
-  frame.origin.y += frame_stroke;
-  frame.size.w -= 2 * frame_stroke;
-  frame.size.h -= 2 * frame_stroke;
-  graphics_context_set_fill_color(ctx, theme->battery_frame);
-  graphics_fill_rect(ctx, frame, 0, GCornerNone);
-
-  // Black core
-  GRect core = frame;
-  core.origin.x += 3;
-  core.origin.y += 3;
-  core.size.w -= 6;
-  core.size.h -= 6;
-  graphics_context_set_fill_color(ctx, theme->ink);
-  graphics_fill_rect(ctx, core, 0, GCornerNone);
-
-  // Colored progress bar
-  GRect bar = core;
-  bar.origin.x += 3;
-  bar.origin.y += 3;
-  bar.size.w -= 6;
-  bar.size.h -= 6;
-  bar.size.w = (int16_t)((bar.size.w * percent) / 100);
-  graphics_context_set_fill_color(ctx, fill);
-  graphics_fill_rect(ctx, bar, 0, GCornerNone);
-}
-
-static GColor prv_battery_color(const ColorTheme *theme, int percent) {
-  if (!theme->battery_status) {
-    return theme->battery_bar;
-  }
-  if (percent < 20) {
-    return theme->battery_low;
-  }
-  if (percent < 50) {
-    return theme->battery_mid;
-  }
-  return theme->battery_high;
 }
 
 static GColor prv_weather_bubble_color(const ColorTheme *theme, bool available) {
@@ -556,53 +499,37 @@ static GColor prv_weather_bubble_color(const ColorTheme *theme, bool available) 
   }
 }
 
-static PetMood prv_pet_mood(void) {
-  if (!s_weather_available) {
-    return PET_MOOD_NEUTRAL;
+static void prv_pet_update_animation(void) {
+  const PetAnimation anim =
+      pet_animation_for_conditions(s_weather_code, s_weather_available, s_battery_percent);
+  if (anim == s_pet_anim) {
+    return;
   }
-  switch (s_weather_code) {
-    case 0:
-    case 1:
-      return PET_MOOD_HAPPY;
-    case 51:
-    case 53:
-    case 55:
-    case 56:
-    case 57:
-    case 61:
-    case 63:
-    case 65:
-    case 66:
-    case 67:
-    case 80:
-    case 81:
-    case 82:
-      return PET_MOOD_SAD;
-    case 95:
-    case 96:
-    case 99:
-      return PET_MOOD_SCARED;
-    default:
-      return PET_MOOD_NEUTRAL;
+  s_pet_anim = anim;
+  pet_set_animation(anim);
+  if (s_pet_layer) {
+    layer_mark_dirty(s_pet_layer);
   }
 }
 
-static void prv_draw_pet(GContext *ctx, GRect bounds, int16_t time_bottom) {
-  const int16_t w = bounds.size.w;
-  const GSize size = pet_size();
-  const int16_t avail_h = bounds.size.h - time_bottom;
-  GPoint origin;
-  origin.x = (w - size.w) / 2;
-  origin.y = time_bottom + (avail_h - size.h) / 2;
-  pet_draw(ctx, origin, prv_pet_mood(), s_pet_tick);
+static void prv_pet_layer_update(Layer *layer, GContext *ctx) {
+  // Clear with the theme ground first: Pebble doesn't clear dirty layer
+  // bounds before the update proc runs, so a transparent sprite would leave
+  // the previous frame's pixels behind (ghost trails).
+  GRect bounds = layer_get_bounds(layer);
+  graphics_context_set_fill_color(ctx, prv_theme()->background);
+  graphics_fill_rect(ctx, bounds, 0, GCornerNone);
+  pet_draw(ctx, GPoint(0, 0), s_pet_tick);
 }
 
+// Advance one animation frame; only the pet layer is redrawn. The interval
+// adapts per animation (fast for frantic attack, lazy for idle).
 static void prv_pet_tick(void *data) {
   s_pet_tick++;
-  if (s_canvas_layer) {
-    layer_mark_dirty(s_canvas_layer);
+  if (s_pet_layer) {
+    layer_mark_dirty(s_pet_layer);
   }
-  s_pet_timer = app_timer_register(300, prv_pet_tick, NULL);
+  s_pet_timer = app_timer_register(pet_frame_interval_ms(s_pet_anim), prv_pet_tick, NULL);
 }
 
 #if DEBUG_ANIM_CYCLE
@@ -610,8 +537,8 @@ static AppTimer *s_anim_cycle_timer;
 
 static void prv_anim_cycle_tick(void *data) {
   pet_cycle_animation();
-  if (s_canvas_layer) {
-    layer_mark_dirty(s_canvas_layer);
+  if (s_pet_layer) {
+    layer_mark_dirty(s_pet_layer);
   }
   s_anim_cycle_timer = app_timer_register(3000, prv_anim_cycle_tick, NULL);
 }
@@ -650,9 +577,6 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
   graphics_context_set_fill_color(ctx, theme->body);
   graphics_fill_rect(ctx, inner_rect, 0, GCornerNone);
 
-  // Bottom of the time box including its shadow
-  const int16_t time_bottom = outer_rect.origin.y + outer_rect.size.h + w / 30;
-
   // Polygon for 200px wide canvases
   if (w == 200 && s_polygon_200) {
     graphics_context_set_fill_color(ctx, GColorWhite);
@@ -667,9 +591,6 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
       graphics_context_set_fill_color(ctx, theme->ink);
       prv_draw_axis_aligned_outline(ctx, s_polygon_info_200_weather.points, s_polygon_info_200_weather.num_points, 4);
     }
-
-    // SPIKE: pixel pet placeholder
-    prv_draw_pet(ctx, bounds, time_bottom);
   } else if (s_polygon_144) {
     graphics_context_set_fill_color(ctx, GColorWhite);
     gpath_draw_filled(ctx, s_polygon_144);
@@ -683,9 +604,6 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
       graphics_context_set_fill_color(ctx, theme->ink);
       prv_draw_axis_aligned_outline(ctx, s_polygon_info_144_weather.points, s_polygon_info_144_weather.num_points, 4);
     }
-
-    // SPIKE: pixel pet placeholder
-    prv_draw_pet(ctx, bounds, time_bottom);
   }
 
   const size_t time_len = strlen(s_time_buffer);
@@ -786,9 +704,32 @@ static void prv_window_load(Window *window) {
   prv_update_time();
   prv_update_weather_text();
   prv_apply_weather_visibility();
+
+  // Pet lives in its own layer below the time box so animation frames only
+  // redraw the sprite rect, not the whole canvas.
+  {
+    const int16_t stroke = ORANGE_STROKE;
+    GRect base_rect = prv_orange_rect_for_bounds(bounds);
+    GRect outer_rect = base_rect;
+    outer_rect.origin.x -= stroke;
+    outer_rect.origin.y -= stroke;
+    outer_rect.size.w += 2 * stroke;
+    outer_rect.size.h += 2 * stroke;
+    const int16_t time_bottom = outer_rect.origin.y + outer_rect.size.h + bounds.size.w / 30;
+    const GSize pet_sz = pet_size();
+    const int16_t avail_h = bounds.size.h - time_bottom;
+    s_pet_layer = layer_create(GRect((bounds.size.w - pet_sz.w) / 2,
+                                     time_bottom + (avail_h - pet_sz.h) / 2,
+                                     pet_sz.w, pet_sz.h));
+    layer_set_update_proc(s_pet_layer, prv_pet_layer_update);
+    layer_add_child(window_layer, s_pet_layer);
+  }
+
   pet_init();
   s_pet_tick = 0;
-  s_pet_timer = app_timer_register(300, prv_pet_tick, NULL);
+  s_pet_anim = pet_animation_for_conditions(s_weather_code, s_weather_available, s_battery_percent);
+  pet_set_animation(s_pet_anim);
+  s_pet_timer = app_timer_register(pet_frame_interval_ms(s_pet_anim), prv_pet_tick, NULL);
 #if DEBUG_ANIM_CYCLE
   s_anim_cycle_timer = app_timer_register(3000, prv_anim_cycle_tick, NULL);
 #endif
@@ -824,7 +765,12 @@ static void prv_window_unload(Window *window) {
   s_date_layer = NULL;
   text_layer_destroy(s_weather_layer);
   s_weather_layer = NULL;
-if (s_pet_timer) {
+  if (s_pet_layer) {
+    layer_remove_from_parent(s_pet_layer);
+    layer_destroy(s_pet_layer);
+    s_pet_layer = NULL;
+  }
+  if (s_pet_timer) {
     app_timer_cancel(s_pet_timer);
     s_pet_timer = NULL;
   }
