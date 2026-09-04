@@ -54,6 +54,11 @@
     "resources": {
       "media": [
         {
+          "type": "png",
+          "name": "IMAGE_BT_DISCONNECT",
+          "file": "images/bt_disconnect.png"
+        },
+        {
           "type": "font",
           "name": "FONT_JERSEY_50",
           "file": "fonts/Jersey10-Regular.ttf",

@@ -31,6 +31,7 @@ static int s_weather_code;
 static uint8_t s_weather_units;
 static bool s_weather_available;
 static bool s_weather_enabled = true;
+static bool s_bt_connected = true;
 #if DEBUG_COLOR_CYCLE
 static AppTimer *s_debug_cycle_timer;
 static int s_debug_weather_index;
@@ -38,6 +39,8 @@ static int s_debug_battery_index;
 static const int s_debug_weather_codes[] = {0, 3, 51, 71, 95};
 static const int s_debug_battery_percents[] = {10, 35, 90};
 #endif
+
+static GBitmap *s_bt_icon_bitmap;
 static int s_battery_percent = 100;
 static int s_step_goal_percent;
 static int32_t s_daily_step_goal;
@@ -292,7 +295,22 @@ static void prv_update_weather_text(void) {
 
 static void prv_apply_weather_visibility(void) {
   if (s_weather_layer) {
-    layer_set_hidden(text_layer_get_layer(s_weather_layer), !s_weather_enabled);
+    layer_set_hidden(text_layer_get_layer(s_weather_layer),
+                     !s_weather_enabled || !s_bt_connected);
+  }
+  if (s_canvas_layer) {
+    layer_mark_dirty(s_canvas_layer);
+  }
+}
+
+static void prv_bt_handler(bool connected) {
+  s_bt_connected = connected;
+  if (s_weather_layer) {
+    layer_set_hidden(text_layer_get_layer(s_weather_layer),
+                     !s_weather_enabled || !s_bt_connected);
+    if (s_bt_connected) {
+      prv_update_weather_text();
+    }
   }
   if (s_canvas_layer) {
     layer_mark_dirty(s_canvas_layer);
@@ -470,8 +488,11 @@ static void prv_draw_metric_bar(GContext *ctx, const ColorTheme *theme, GRect bo
   graphics_context_set_fill_color(ctx, theme->ink);
   graphics_fill_rect(ctx, box, 0, GCornerNone);
 
-  // Pastel frame inset
-  const int16_t frame_stroke = stroke * 2;
+  // Pastel frame inset. Short boxes (144px stacked bars) use single-stroke
+  // framing and 2px inner insets so the colored fill keeps visible height.
+  const bool compact = box.size.h < 30;
+  const int16_t frame_stroke = compact ? stroke : stroke * 2;
+  const int16_t inner_inset = compact ? 2 : 3;
   GRect frame = box;
   frame.origin.x += frame_stroke;
   frame.origin.y += frame_stroke;
@@ -482,19 +503,19 @@ static void prv_draw_metric_bar(GContext *ctx, const ColorTheme *theme, GRect bo
 
   // Black core
   GRect core = frame;
-  core.origin.x += 3;
-  core.origin.y += 3;
-  core.size.w -= 6;
-  core.size.h -= 6;
+  core.origin.x += inner_inset;
+  core.origin.y += inner_inset;
+  core.size.w -= 2 * inner_inset;
+  core.size.h -= 2 * inner_inset;
   graphics_context_set_fill_color(ctx, theme->ink);
   graphics_fill_rect(ctx, core, 0, GCornerNone);
 
   // Colored progress bar
   GRect bar = core;
-  bar.origin.x += 3;
-  bar.origin.y += 3;
-  bar.size.w -= 6;
-  bar.size.h -= 6;
+  bar.origin.x += inner_inset;
+  bar.origin.y += inner_inset;
+  bar.size.w -= 2 * inner_inset;
+  bar.size.h -= 2 * inner_inset;
   bar.size.w = (int16_t)((bar.size.w * percent) / 100);
   graphics_context_set_fill_color(ctx, fill);
   graphics_fill_rect(ctx, bar, 0, GCornerNone);
@@ -593,7 +614,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_200.points, s_polygon_info_200.num_points, 4);
 
     // Weather bubble: condition-colored fill, black border, mirrors the date bubble
-    if (s_weather_enabled) {
+    if (s_weather_enabled || !s_bt_connected) {
       graphics_context_set_fill_color(ctx, prv_weather_bubble_color(theme, s_weather_available));
       gpath_draw_filled(ctx, s_polygon_200_weather);
       graphics_context_set_fill_color(ctx, theme->ink);
@@ -611,7 +632,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
           : s_step_goal_percent;
       const GColor fill = s_bars_mode == BARS_BATTERY_ONLY
           ? prv_battery_color(theme, s_battery_percent)
-          : GColorWhite;
+          : theme->accent;
       prv_draw_metric_bar(ctx, theme, GRect(22, bar_top, 155, bar_h), stroke, percent, fill);
     } else {
       const int16_t bar_h = 32;
@@ -621,7 +642,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
       prv_draw_metric_bar(ctx, theme, GRect(22, stack_top, 155, bar_h), stroke, s_battery_percent,
                           prv_battery_color(theme, s_battery_percent));
       prv_draw_metric_bar(ctx, theme, GRect(22, stack_top + bar_h + bar_gap, 155, bar_h),
-                          stroke, s_step_goal_percent, GColorWhite);
+                          stroke, s_step_goal_percent, theme->accent);
     }
   } else if (s_polygon_144) {
     graphics_context_set_fill_color(ctx, GColorWhite);
@@ -630,7 +651,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_144.points, s_polygon_info_144.num_points, 4);
 
     // Weather bubble: condition-colored fill, black border, mirrors the date bubble
-    if (s_weather_enabled) {
+    if (s_weather_enabled || !s_bt_connected) {
       graphics_context_set_fill_color(ctx, prv_weather_bubble_color(theme, s_weather_available));
       gpath_draw_filled(ctx, s_polygon_144_weather);
       graphics_context_set_fill_color(ctx, theme->ink);
@@ -648,7 +669,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
           : s_step_goal_percent;
       const GColor fill = s_bars_mode == BARS_BATTERY_ONLY
           ? prv_battery_color(theme, s_battery_percent)
-          : GColorWhite;
+          : theme->accent;
       prv_draw_metric_bar(ctx, theme, GRect(16, bar_top, 112, bar_h), stroke, percent, fill);
     } else {
       const int16_t bar_h = 24;
@@ -658,8 +679,19 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
       prv_draw_metric_bar(ctx, theme, GRect(16, stack_top, 112, bar_h), stroke, s_battery_percent,
                           prv_battery_color(theme, s_battery_percent));
       prv_draw_metric_bar(ctx, theme, GRect(16, stack_top + bar_h + bar_gap, 112, bar_h),
-                          stroke, s_step_goal_percent, GColorWhite);
+                          stroke, s_step_goal_percent, theme->accent);
     }
+  }
+
+  if (!s_bt_connected && s_bt_icon_bitmap) {
+    const GRect bounds_icon = gbitmap_get_bounds(s_bt_icon_bitmap);
+    const int16_t iw = bounds_icon.size.w;
+    const int16_t ih = bounds_icon.size.h;
+    const GPoint center = w == 200 ? GPoint(55, 28) : GPoint(39, 25);
+    graphics_context_set_compositing_mode(ctx, GCompOpSet);
+    graphics_draw_bitmap_in_rect(ctx, s_bt_icon_bitmap,
+                                 GRect(center.x - iw / 2, center.y - ih / 2, iw, ih));
+    graphics_context_set_compositing_mode(ctx, GCompOpAssign);
   }
 
   const size_t time_len = strlen(s_time_buffer);
@@ -760,6 +792,7 @@ static void prv_window_load(Window *window) {
   prv_update_time();
   prv_update_weather_text();
   prv_apply_weather_visibility();
+  s_bt_icon_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BT_DISCONNECT);
 #if DEBUG_COLOR_CYCLE
   s_weather_available = true;
   prv_update_weather_text();
@@ -792,6 +825,10 @@ static void prv_window_unload(Window *window) {
   s_date_layer = NULL;
   text_layer_destroy(s_weather_layer);
   s_weather_layer = NULL;
+  if (s_bt_icon_bitmap) {
+    gbitmap_destroy(s_bt_icon_bitmap);
+    s_bt_icon_bitmap = NULL;
+  }
 #if DEBUG_COLOR_CYCLE
   if (s_debug_cycle_timer) {
     app_timer_cancel(s_debug_cycle_timer);
@@ -839,6 +876,7 @@ static void prv_init(void) {
   s_weather_enabled = persist_exists(PERSIST_KEY_WEATHER_ENABLED)
       ? persist_read_bool(PERSIST_KEY_WEATHER_ENABLED)
       : true;
+  s_bt_connected = bluetooth_connection_service_peek();
 
   s_window = window_create();
   window_set_background_color(s_window, prv_theme()->background);
@@ -852,6 +890,7 @@ static void prv_init(void) {
   BatteryChargeState state = battery_state_service_peek();
   s_battery_percent = state.charge_percent;
   battery_state_service_subscribe(prv_battery_handler);
+  bluetooth_connection_service_subscribe(prv_bt_handler);
 #if defined(PBL_HEALTH)
   prv_update_step_progress();
   health_service_events_subscribe(prv_health_handler, NULL);
@@ -863,6 +902,7 @@ static void prv_init(void) {
 }
 
 static void prv_deinit(void) {
+  bluetooth_connection_service_unsubscribe();
   battery_state_service_unsubscribe();
 #if defined(PBL_HEALTH)
   health_service_events_unsubscribe();
