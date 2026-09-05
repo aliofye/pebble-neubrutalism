@@ -14,7 +14,10 @@
 #define DEBUG_COLOR_CYCLE 0
 
 static Window *s_window;
-static Layer *s_canvas_layer;
+static Layer *s_background_layer;
+static Layer *s_bars_layer;
+static Layer *s_time_layer;
+static int16_t s_screen_w;
 static TextLayer *s_date_layer;
 static GFont s_date_font;
 static char s_time_buffer[8];
@@ -272,8 +275,8 @@ static void prv_update_time(struct tm *tick_time) {
     text_layer_set_text(s_date_layer, s_date_buffer);
   }
 
-  if (s_canvas_layer) {
-    layer_mark_dirty(s_canvas_layer);
+  if (s_time_layer) {
+    layer_mark_dirty(s_time_layer);
   }
 }
 
@@ -300,8 +303,8 @@ static void prv_apply_weather_visibility(void) {
     layer_set_hidden(text_layer_get_layer(s_weather_layer),
                      !s_weather_enabled || !s_bt_connected);
   }
-  if (s_canvas_layer) {
-    layer_mark_dirty(s_canvas_layer);
+  if (s_background_layer) {
+    layer_mark_dirty(s_background_layer);
   }
 }
 
@@ -314,8 +317,8 @@ static void prv_bt_handler(bool connected) {
       prv_update_weather_text();
     }
   }
-  if (s_canvas_layer) {
-    layer_mark_dirty(s_canvas_layer);
+  if (s_background_layer) {
+    layer_mark_dirty(s_background_layer);
   }
 }
 
@@ -325,8 +328,11 @@ static void prv_debug_cycle_tick(void *data) {
   s_debug_weather_index = (s_debug_weather_index + 1) % ARRAY_LENGTH(s_debug_weather_codes);
   s_battery_percent = s_debug_battery_percents[s_debug_battery_index];
   s_debug_battery_index = (s_debug_battery_index + 1) % ARRAY_LENGTH(s_debug_battery_percents);
-  if (s_canvas_layer) {
-    layer_mark_dirty(s_canvas_layer);
+  if (s_background_layer) {
+    layer_mark_dirty(s_background_layer);
+  }
+  if (s_bars_layer) {
+    layer_mark_dirty(s_bars_layer);
   }
   s_debug_cycle_timer = app_timer_register(2000, prv_debug_cycle_tick, NULL);
 }
@@ -335,8 +341,8 @@ static void prv_debug_cycle_tick(void *data) {
 
 static void prv_battery_handler(BatteryChargeState state) {
   s_battery_percent = state.charge_percent;
-  if (s_canvas_layer) {
-    layer_mark_dirty(s_canvas_layer);
+  if (s_bars_layer) {
+    layer_mark_dirty(s_bars_layer);
   }
 }
 
@@ -353,8 +359,8 @@ static void prv_update_step_progress(void) {
 
   if (s_step_goal_percent != progress) {
     s_step_goal_percent = progress;
-    if (s_canvas_layer) {
-      layer_mark_dirty(s_canvas_layer);
+    if (s_bars_layer) {
+      layer_mark_dirty(s_bars_layer);
     }
   }
 }
@@ -406,7 +412,15 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
       persist_write_int(PERSIST_KEY_COLOR_THEME, s_color_theme);
       window_set_background_color(s_window, prv_theme()->background);
       text_layer_set_text_color(s_date_layer, prv_theme()->ink);
-      layer_mark_dirty(s_canvas_layer);
+      if (s_background_layer) {
+        layer_mark_dirty(s_background_layer);
+      }
+      if (s_bars_layer) {
+        layer_mark_dirty(s_bars_layer);
+      }
+      if (s_time_layer) {
+        layer_mark_dirty(s_time_layer);
+      }
     }
   }
 
@@ -426,7 +440,9 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
     if (bars_mode < BARS_MODE_COUNT) {
       s_bars_mode = bars_mode;
       persist_write_int(PERSIST_KEY_BARS_MODE, s_bars_mode);
-      layer_mark_dirty(s_canvas_layer);
+      if (s_bars_layer) {
+        layer_mark_dirty(s_bars_layer);
+      }
     }
   }
 
@@ -465,8 +481,8 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
     if (code != s_weather_code) {
       s_weather_code = code;
       persist_write_int(PERSIST_KEY_WEATHER_CODE, s_weather_code);
-      if (s_canvas_layer) {
-        layer_mark_dirty(s_canvas_layer);
+      if (s_background_layer) {
+        layer_mark_dirty(s_background_layer);
       }
     }
   }
@@ -572,7 +588,9 @@ static GColor prv_weather_bubble_color(const ColorTheme *theme, bool available) 
   }
 }
 
-static void prv_canvas_update(Layer *layer, GContext *ctx) {
+// Static chrome: time box, polygons, weather bubble, BT icon. Redraws only on
+// theme / weather / bluetooth changes, never on the minute tick.
+static void prv_background_update_proc(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   const int16_t w = bounds.size.w;
   const int16_t stroke = ORANGE_STROKE;
@@ -605,9 +623,6 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
   graphics_context_set_fill_color(ctx, theme->body);
   graphics_fill_rect(ctx, inner_rect, 0, GCornerNone);
 
-  // Bottom of the time box including its shadow
-  const int16_t time_bottom = outer_rect.origin.y + outer_rect.size.h + w / 30;
-
   // Polygon for 200px wide canvases
   if (w == 200 && s_polygon_200) {
     graphics_context_set_fill_color(ctx, GColorWhite);
@@ -622,30 +637,6 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
       graphics_context_set_fill_color(ctx, theme->ink);
       prv_draw_axis_aligned_outline(ctx, s_polygon_info_200_weather.points, s_polygon_info_200_weather.num_points, 4);
     }
-
-    // Progress bars: either a single full-height bar or two stacked bars,
-    // vertically centered between the time box shadow and the bottom
-    const int16_t avail_h = bounds.size.h - time_bottom;
-    if (s_bars_mode == BARS_BATTERY_ONLY || s_bars_mode == BARS_STEPS_ONLY) {
-      const int16_t bar_h = 45;
-      const int16_t bar_top = time_bottom + (avail_h - (bar_h + METRIC_SHADOW_OFFSET)) / 2;
-      const int percent = s_bars_mode == BARS_BATTERY_ONLY
-          ? s_battery_percent
-          : s_step_goal_percent;
-      const GColor fill = s_bars_mode == BARS_BATTERY_ONLY
-          ? prv_battery_color(theme, s_battery_percent)
-          : theme->accent;
-      prv_draw_metric_bar(ctx, theme, GRect(22, bar_top, 155, bar_h), stroke, percent, fill);
-    } else {
-      const int16_t bar_h = 32;
-      const int16_t bar_gap = 8;
-      const int16_t stack_h = bar_h * 2 + bar_gap + METRIC_SHADOW_OFFSET;
-      const int16_t stack_top = time_bottom + (avail_h - stack_h) / 2;
-      prv_draw_metric_bar(ctx, theme, GRect(22, stack_top, 155, bar_h), stroke, s_battery_percent,
-                          prv_battery_color(theme, s_battery_percent));
-      prv_draw_metric_bar(ctx, theme, GRect(22, stack_top + bar_h + bar_gap, 155, bar_h),
-                          stroke, s_step_goal_percent, theme->accent);
-    }
   } else if (s_polygon_144) {
     graphics_context_set_fill_color(ctx, GColorWhite);
     gpath_draw_filled(ctx, s_polygon_144);
@@ -659,30 +650,6 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
       graphics_context_set_fill_color(ctx, theme->ink);
       prv_draw_axis_aligned_outline(ctx, s_polygon_info_144_weather.points, s_polygon_info_144_weather.num_points, 4);
     }
-
-    // Progress bars: either a single full-height bar or two stacked bars,
-    // vertically centered between the time box shadow and the bottom
-    const int16_t avail_h = bounds.size.h - time_bottom;
-    if (s_bars_mode == BARS_BATTERY_ONLY || s_bars_mode == BARS_STEPS_ONLY) {
-      const int16_t bar_h = 38;
-      const int16_t bar_top = time_bottom + (avail_h - (bar_h + METRIC_SHADOW_OFFSET)) / 2;
-      const int percent = s_bars_mode == BARS_BATTERY_ONLY
-          ? s_battery_percent
-          : s_step_goal_percent;
-      const GColor fill = s_bars_mode == BARS_BATTERY_ONLY
-          ? prv_battery_color(theme, s_battery_percent)
-          : theme->accent;
-      prv_draw_metric_bar(ctx, theme, GRect(16, bar_top, 112, bar_h), stroke, percent, fill);
-    } else {
-      const int16_t bar_h = 24;
-      const int16_t bar_gap = 6;
-      const int16_t stack_h = bar_h * 2 + bar_gap + METRIC_SHADOW_OFFSET;
-      const int16_t stack_top = time_bottom + (avail_h - stack_h) / 2;
-      prv_draw_metric_bar(ctx, theme, GRect(16, stack_top, 112, bar_h), stroke, s_battery_percent,
-                          prv_battery_color(theme, s_battery_percent));
-      prv_draw_metric_bar(ctx, theme, GRect(16, stack_top + bar_h + bar_gap, 112, bar_h),
-                          stroke, s_step_goal_percent, theme->accent);
-    }
   }
 
   if (!s_bt_connected && s_bt_icon_bitmap) {
@@ -695,10 +662,54 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
                                  GRect(center.x - iw / 2, center.y - ih / 2, iw, ih));
     graphics_context_set_compositing_mode(ctx, GCompOpAssign);
   }
+}
+
+// Metric bars: either a single full-height bar or two stacked bars, vertically
+// centered between the time box shadow and the screen bottom. This layer's
+// frame starts at the bottom of the time box shadow, so coordinates here are
+// relative to it; redraws only on battery/step/theme/bars-mode changes.
+static void prv_bars_update_proc(Layer *layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(layer);
+  const int16_t stroke = ORANGE_STROKE;
+  const ColorTheme *theme = prv_theme();
+  const bool is_200 = bounds.size.w == 200;
+  const int16_t bar_x = is_200 ? 22 : 16;
+  const int16_t bar_w = is_200 ? 155 : 112;
+
+  const int16_t avail_h = bounds.size.h;
+  if (s_bars_mode == BARS_BATTERY_ONLY || s_bars_mode == BARS_STEPS_ONLY) {
+    const int16_t bar_h = is_200 ? 45 : 38;
+    const int16_t bar_top = (avail_h - (bar_h + METRIC_SHADOW_OFFSET)) / 2;
+    const int percent = s_bars_mode == BARS_BATTERY_ONLY
+        ? s_battery_percent
+        : s_step_goal_percent;
+    const GColor fill = s_bars_mode == BARS_BATTERY_ONLY
+        ? prv_battery_color(theme, s_battery_percent)
+        : theme->accent;
+    prv_draw_metric_bar(ctx, theme, GRect(bar_x, bar_top, bar_w, bar_h), stroke, percent, fill);
+  } else {
+    const int16_t bar_h = is_200 ? 32 : 24;
+    const int16_t bar_gap = is_200 ? 8 : 6;
+    const int16_t stack_h = bar_h * 2 + bar_gap + METRIC_SHADOW_OFFSET;
+    const int16_t stack_top = (avail_h - stack_h) / 2;
+    prv_draw_metric_bar(ctx, theme, GRect(bar_x, stack_top, bar_w, bar_h), stroke,
+                        s_battery_percent, prv_battery_color(theme, s_battery_percent));
+    prv_draw_metric_bar(ctx, theme, GRect(bar_x, stack_top + bar_h + bar_gap, bar_w, bar_h),
+                        stroke, s_step_goal_percent, theme->accent);
+  }
+}
+
+// Time digits: this layer's frame is the inner (orange) area of the time box,
+// so glyphs are centered within the layer bounds. Pixel scale derives from the
+// full screen width, not the layer width. This is the only layer redrawn on
+// the minute tick.
+static void prv_time_update_proc(Layer *layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(layer);
+  const ColorTheme *theme = prv_theme();
 
   const size_t time_len = strlen(s_time_buffer);
 
-  int16_t pix_w = bounds.size.w / 40;
+  int16_t pix_w = s_screen_w / 40;
   int16_t pix_h = pix_w;
   if (pix_w == 5 && s_current_hour >= 20 && s_current_hour < 24) {
     pix_h = 4;
@@ -721,8 +732,8 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
     }
   }
 
-  const int16_t start_x = inner_rect.origin.x + (inner_rect.size.w - total_width) / 2;
-  const int16_t start_y = inner_rect.origin.y + (inner_rect.size.h - glyph_height) / 2;
+  const int16_t start_x = (bounds.size.w - total_width) / 2;
+  const int16_t start_y = (bounds.size.h - glyph_height) / 2;
 
   graphics_context_set_fill_color(ctx, theme->ink);
 
@@ -758,9 +769,20 @@ static void prv_window_load(Window *window) {
     s_polygon_144_weather = gpath_create(&s_polygon_info_144_weather);
   }
 
-  s_canvas_layer = layer_create(bounds);
-  layer_set_update_proc(s_canvas_layer, prv_canvas_update);
-  layer_add_child(window_layer, s_canvas_layer);
+  s_screen_w = bounds.size.w;
+
+  // Static chrome: boxes, polygons, weather bubble, BT icon
+  s_background_layer = layer_create(bounds);
+  layer_set_update_proc(s_background_layer, prv_background_update_proc);
+  layer_add_child(window_layer, s_background_layer);
+
+  // Metric bars live below the time box shadow and redraw only on
+  // battery/step/theme/bars-mode changes
+  const GRect base_rect = prv_orange_rect_for_bounds(bounds);
+  const int16_t time_bottom = base_rect.origin.y + base_rect.size.h + ORANGE_STROKE + s_screen_w / 30;
+  s_bars_layer = layer_create(GRect(0, time_bottom, bounds.size.w, bounds.size.h - time_bottom));
+  layer_set_update_proc(s_bars_layer, prv_bars_update_proc);
+  layer_add_child(window_layer, s_bars_layer);
 
   const bool is_200 = bounds.size.w == 200;
   const int16_t center_x = is_200 ? 145 : 105;
@@ -790,6 +812,16 @@ static void prv_window_load(Window *window) {
   layer_add_child(window_layer, text_layer_get_layer(s_date_layer));
   text_layer_set_font(s_weather_layer, s_date_font);
   layer_add_child(window_layer, text_layer_get_layer(s_weather_layer));
+
+  // Time digits redraw every minute; the layer is exactly the orange area
+  GRect time_frame = base_rect;
+  time_frame.origin.x += ORANGE_STROKE;
+  time_frame.origin.y += ORANGE_STROKE;
+  time_frame.size.w -= 2 * ORANGE_STROKE;
+  time_frame.size.h -= 2 * ORANGE_STROKE;
+  s_time_layer = layer_create(time_frame);
+  layer_set_update_proc(s_time_layer, prv_time_update_proc);
+  layer_add_child(window_layer, s_time_layer);
 
   prv_update_time_now();
   prv_update_weather_text();
@@ -837,7 +869,18 @@ static void prv_window_unload(Window *window) {
     s_debug_cycle_timer = NULL;
   }
 #endif
-  layer_destroy(s_canvas_layer);
+  if (s_background_layer) {
+    layer_destroy(s_background_layer);
+    s_background_layer = NULL;
+  }
+  if (s_bars_layer) {
+    layer_destroy(s_bars_layer);
+    s_bars_layer = NULL;
+  }
+  if (s_time_layer) {
+    layer_destroy(s_time_layer);
+    s_time_layer = NULL;
+  }
 }
 
 static void prv_init(void) {
