@@ -102,6 +102,7 @@ typedef struct {
   GColor battery_mid;
   GColor battery_high;
   bool weather_condition_colors;
+  GColor step_bar;
 } ColorTheme;
 
 static const ColorTheme s_color_themes[THEME_COUNT] = {
@@ -117,6 +118,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_mid = GColorChromeYellow,
     .battery_high = GColorMayGreen,
     .weather_condition_colors = true,
+    .step_bar = GColorLavenderIndigo,
   },
   [THEME_GAME_BOY_GREEN] = {
     .background = GColorLightGray,
@@ -125,6 +127,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_frame = GColorLightGray,
     .battery_bar = GColorDarkGreen,
     .ink = GColorBlack,
+    .step_bar = GColorMintGreen,
   },
   [THEME_OCEAN_BLUE] = {
     .background = GColorCeleste,
@@ -133,6 +136,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_frame = GColorCeleste,
     .battery_bar = GColorCobaltBlue,
     .ink = GColorBlack,
+    .step_bar = GColorElectricBlue,
   },
   [THEME_AMBER_LCD] = {
     .background = GColorPastelYellow,
@@ -141,6 +145,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_frame = GColorPastelYellow,
     .battery_bar = GColorOrange,
     .ink = GColorBlack,
+    .step_bar = GColorIcterine,
   },
   [THEME_MONOCHROME] = {
     .background = GColorLightGray,
@@ -149,6 +154,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_frame = GColorLightGray,
     .battery_bar = GColorDarkGray,
     .ink = GColorBlack,
+    .step_bar = GColorWhite,
   },
   [THEME_PURPLE_PIXEL] = {
     .background = GColorRichBrilliantLavender,
@@ -157,6 +163,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_frame = GColorRichBrilliantLavender,
     .battery_bar = GColorIndigo,
     .ink = GColorBlack,
+    .step_bar = GColorBabyBlueEyes,
   },
 };
 
@@ -685,7 +692,7 @@ static void prv_bars_update_proc(Layer *layer, GContext *ctx) {
         : s_step_goal_percent;
     const GColor fill = s_bars_mode == BARS_BATTERY_ONLY
         ? prv_battery_color(theme, s_battery_percent)
-        : theme->accent;
+        : theme->step_bar;
     prv_draw_metric_bar(ctx, theme, GRect(bar_x, bar_top, bar_w, bar_h), stroke, percent, fill);
   } else {
     const int16_t bar_h = is_200 ? 32 : 24;
@@ -695,7 +702,7 @@ static void prv_bars_update_proc(Layer *layer, GContext *ctx) {
     prv_draw_metric_bar(ctx, theme, GRect(bar_x, stack_top, bar_w, bar_h), stroke,
                         s_battery_percent, prv_battery_color(theme, s_battery_percent));
     prv_draw_metric_bar(ctx, theme, GRect(bar_x, stack_top + bar_h + bar_gap, bar_w, bar_h),
-                        stroke, s_step_goal_percent, theme->accent);
+                        stroke, s_step_goal_percent, theme->step_bar);
   }
 }
 
