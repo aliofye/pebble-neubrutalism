@@ -79,12 +79,12 @@ describe('index', () => {
     expect(clayInstance.setSettings).not.toHaveBeenCalledWith('WEATHER_UNITS', 5);
   });
 
-  it('schedules weather fetches every 3 hours', () => {
+  it('schedules weather fetches every hour', () => {
     // Disable first so the test starts from a known timer state.
     fire('appmessage', { payload: { WEATHER_ENABLED: 0 } });
     const spy = jest.spyOn(global, 'setInterval');
     fire('appmessage', { payload: { WEATHER_ENABLED: 1 } });
-    expect(spy).toHaveBeenCalledWith(expect.any(Function), 3 * 60 * 60 * 1000);
+    expect(spy).toHaveBeenCalledWith(expect.any(Function), 60 * 60 * 1000);
     spy.mockRestore();
   });
 
