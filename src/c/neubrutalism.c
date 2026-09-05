@@ -258,10 +258,7 @@ static void prv_draw_axis_aligned_outline(GContext *ctx, const GPoint *points, s
     }
   }
 }
-static void prv_update_time(void) {
-  time_t now = time(NULL);
-  struct tm *tick_time = localtime(&now);
-
+static void prv_update_time(struct tm *tick_time) {
   const uint8_t hour = s_use_24_hour
       ? tick_time->tm_hour
       : (tick_time->tm_hour % 12 == 0 ? 12 : tick_time->tm_hour % 12);
@@ -278,6 +275,11 @@ static void prv_update_time(void) {
   if (s_canvas_layer) {
     layer_mark_dirty(s_canvas_layer);
   }
+}
+
+static void prv_update_time_now(void) {
+  time_t now = time(NULL);
+  prv_update_time(localtime(&now));
 }
 
 static void prv_update_weather_text(void) {
@@ -358,7 +360,7 @@ static void prv_update_step_progress(void) {
 }
 
 static void prv_tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-  prv_update_time();
+  prv_update_time(tick_time);
   prv_update_step_progress();
 }
 
@@ -393,7 +395,7 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
   if (format_tuple) {
     s_use_24_hour = format_tuple->value->int32 != 0;
     persist_write_bool(PERSIST_KEY_TIME_FORMAT, s_use_24_hour);
-    prv_update_time();
+    prv_update_time_now();
   }
 
   Tuple *theme_tuple = dict_find(iter, MESSAGE_KEY_COLOR_THEME);
@@ -447,18 +449,25 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
 
   Tuple *weather_temp_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_TEMP);
   if (weather_temp_tuple) {
-    s_weather_temp = weather_temp_tuple->value->int32;
+    const int temp = weather_temp_tuple->value->int32;
+    const bool changed = temp != s_weather_temp;
+    s_weather_temp = temp;
     s_weather_available = true;
-    persist_write_int(PERSIST_KEY_WEATHER_TEMP, s_weather_temp);
+    if (changed) {
+      persist_write_int(PERSIST_KEY_WEATHER_TEMP, s_weather_temp);
+    }
     prv_update_weather_text();
   }
 
   Tuple *weather_code_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_CODE);
   if (weather_code_tuple) {
-    s_weather_code = weather_code_tuple->value->int32;
-    persist_write_int(PERSIST_KEY_WEATHER_CODE, s_weather_code);
-    if (s_canvas_layer) {
-      layer_mark_dirty(s_canvas_layer);
+    const int code = weather_code_tuple->value->int32;
+    if (code != s_weather_code) {
+      s_weather_code = code;
+      persist_write_int(PERSIST_KEY_WEATHER_CODE, s_weather_code);
+      if (s_canvas_layer) {
+        layer_mark_dirty(s_canvas_layer);
+      }
     }
   }
 
@@ -782,7 +791,7 @@ static void prv_window_load(Window *window) {
   text_layer_set_font(s_weather_layer, s_date_font);
   layer_add_child(window_layer, text_layer_get_layer(s_weather_layer));
 
-  prv_update_time();
+  prv_update_time_now();
   prv_update_weather_text();
   prv_apply_weather_visibility();
   s_bt_icon_bitmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BT_DISCONNECT);
