@@ -357,22 +357,15 @@ static void prv_update_step_progress(void) {
   }
 }
 
-#if defined(PBL_HEALTH)
-static void prv_health_handler(HealthEventType event, void *context) {
-  if (event == HealthEventMovementUpdate || event == HealthEventSignificantUpdate) {
-    prv_update_step_progress();
-  }
+static void prv_tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  prv_update_time();
+  prv_update_step_progress();
 }
-#endif
 
 static GRect prv_orange_rect_for_bounds(GRect bounds) {
   int x, y, rw, rh;
   orange_rect(bounds.size.w, bounds.size.h, &x, &y, &rw, &rh);
   return GRect(x, y, rw, rh);
-}
-
-static void prv_tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-  prv_update_time();
 }
 
 static void prv_send_settings(void) {
@@ -893,7 +886,6 @@ static void prv_init(void) {
   bluetooth_connection_service_subscribe(prv_bt_handler);
 #if defined(PBL_HEALTH)
   prv_update_step_progress();
-  health_service_events_subscribe(prv_health_handler, NULL);
 #endif
   tick_timer_service_subscribe(MINUTE_UNIT, prv_tick_handler);
 
@@ -904,9 +896,6 @@ static void prv_init(void) {
 static void prv_deinit(void) {
   bluetooth_connection_service_unsubscribe();
   battery_state_service_unsubscribe();
-#if defined(PBL_HEALTH)
-  health_service_events_unsubscribe();
-#endif
   tick_timer_service_unsubscribe();
   app_message_deregister_callbacks();
   window_destroy(s_window);
