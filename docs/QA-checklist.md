@@ -18,7 +18,8 @@ emulator and/or a real watch after any watch-side change.
 - [ ] The **battery** bar fills proportionally to battery level; in the
       neubrutalism theme it reads green (>= 50%), yellow (20-49%), and red (< 20%),
       and the bar is clear at 100%, mid, and low.
-- [ ] The **daily steps** bar (bottom) fills white; progress = steps / step target,
+- [ ] The **daily steps** bar (bottom) fills lavender purple in the neubrutalism
+      theme and the theme accent color elsewhere; progress = steps / step target,
       and with steps above the target the bar stays full (not overflowing).
 - [ ] Changing the daily step target re-scales the bar; an out-of-range target sent
       from the phone is clamped (min 1,000 / max 100,000).
