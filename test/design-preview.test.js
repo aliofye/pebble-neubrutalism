@@ -1,0 +1,60 @@
+'use strict';
+
+const pv = require('../tools/pebble-editor/app/preview');
+
+test('evalDim integers and expressions', () => {
+  expect(pv.evalDim(5, 200, 228, {})).toBe(5);
+  expect(pv.evalDim('w', 200, 228, {})).toBe(200);
+  expect(pv.evalDim('w/10', 200, 228, {})).toBe(20);
+  expect(pv.evalDim('(w*8)/10', 200, 228, {})).toBe(160);
+  expect(pv.evalDim('h/5+h/3+3+200/30', 200, 228, {})).toBe(45 + 76 + 3 + 6);
+  expect(pv.evalDim('w-2*stroke', 200, 228, { stroke: 3 })).toBe(194);
+  expect(pv.evalDim('-w', 200, 228, {})).toBe(-200);
+});
+
+test('evalDim truncates division like C', () => {
+  expect(pv.evalDim('7/2', 0, 0, {})).toBe(3);
+  expect(pv.evalDim('0-7/2', 0, 0, {})).toBe(-3);
+});
+
+test('evalDim rejects bad input', () => {
+  expect(() => pv.evalDim('w/0', 10, 10, {})).toThrow('division by zero');
+  expect(() => pv.evalDim('w-nope', 10, 10, {})).toThrow('unknown name');
+  expect(() => pv.evalDim(1.5, 10, 10, {})).toThrow('non-integer');
+});
+
+test('evalCond covers ops and any/or', () => {
+  const theme = { tokens: {}, flags: { f: true } };
+  const state = { b: 10, s: 'x' };
+  expect(pv.evalCond({ var: 'b', op: 'lt', value: 20 }, theme, state)).toBe(true);
+  expect(pv.evalCond({ var: 'b', op: 'in', value: [5, 10] }, theme, state)).toBe(true);
+  expect(pv.evalCond({ var: 'theme.f', op: 'eq', value: true }, theme, state)).toBe(true);
+  expect(pv.evalCond([
+    { var: 'b', op: 'lt', value: 20 },
+    { var: 'b', op: 'gt', value: 50 },
+  ], theme, state)).toBe(false);
+  expect(pv.evalCond({ any: [
+    { var: 'b', op: 'gt', value: 50 },
+    { var: 's', op: 'eq', value: 'x' },
+  ] }, theme, state)).toBe(true);
+  expect(pv.evalCond(undefined, theme, state)).toBe(true);
+});
+
+test('resolveFill picks first match then default', () => {
+  const theme = { tokens: { lo: 'GColorRed', hi: 'GColorMayGreen' }, flags: {} };
+  const fill = {
+    cases: [{ when: { var: 'b', op: 'lt', value: 20 }, fill: '$lo' }],
+    default: '$hi',
+  };
+  expect(pv.resolveFill(fill, theme, { b: 10 })).toBe('#FF0000');
+  expect(pv.resolveFill(fill, theme, { b: 90 })).toBe('#55AA55');
+  expect(pv.resolveFill('GColorWhite', theme, {})).toBe('#FFFFFF');
+  expect(pv.resolveFill('GColorClear', theme, {})).toBe(null);
+});
+
+test('palette sanity', () => {
+  expect(pv.GCOLORS.Black).toBe('#000000');
+  expect(pv.GCOLORS.White).toBe('#FFFFFF');
+  expect(pv.GCOLORS.Clear).toBe(null);
+  expect(Object.keys(pv.GCOLORS).length).toBe(65);
+});

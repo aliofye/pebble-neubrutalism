@@ -1,0 +1,1369 @@
+{
+  "schema": 1,
+  "name": "neubrutalism-plus",
+  "constants": {
+    "orange_stroke": 3,
+    "metric_shadow": 3,
+    "shadow_div": 30,
+    "outline_stroke": 4
+  },
+  "screens": {
+    "w200": {
+      "w": 200,
+      "h": 228,
+      "layers": [
+        {
+          "id": "background",
+          "kind": "graphics",
+          "note": "redraw on theme/weather/bluetooth change",
+          "items": [
+            {
+              "kind": "rect",
+              "box": {
+                "x": "w/10-orange_stroke+w/shadow_div",
+                "y": "h/5-orange_stroke+w/shadow_div",
+                "w": "(w*8)/10+2*orange_stroke",
+                "h": "h/3+2*orange_stroke"
+              },
+              "fill": "$ink"
+            },
+            {
+              "kind": "rect",
+              "box": {
+                "x": "w/10-orange_stroke",
+                "y": "h/5-orange_stroke",
+                "w": "(w*8)/10+2*orange_stroke",
+                "h": "h/3+2*orange_stroke"
+              },
+              "fill": "$ink"
+            },
+            {
+              "kind": "rect",
+              "box": {
+                "x": "w/10+orange_stroke",
+                "y": "h/5+orange_stroke",
+                "w": "(w*8)/10-2*orange_stroke",
+                "h": "h/3-2*orange_stroke"
+              },
+              "fill": "$body"
+            },
+            {
+              "kind": "polygon",
+              "points": [
+                [
+                  100,
+                  12
+                ],
+                [
+                  190,
+                  12
+                ],
+                [
+                  190,
+                  45
+                ],
+                [
+                  187,
+                  45
+                ],
+                [
+                  187,
+                  48
+                ],
+                [
+                  184,
+                  48
+                ],
+                [
+                  184,
+                  51
+                ],
+                [
+                  181,
+                  51
+                ],
+                [
+                  181,
+                  55
+                ],
+                [
+                  175,
+                  55
+                ],
+                [
+                  175,
+                  45
+                ],
+                [
+                  175,
+                  45
+                ],
+                [
+                  100,
+                  45
+                ]
+              ],
+              "fill": "GColorWhite",
+              "outline": {
+                "stroke": "outline_stroke"
+              }
+            },
+            {
+              "kind": "polygon",
+              "points": [
+                [
+                  100,
+                  12
+                ],
+                [
+                  10,
+                  12
+                ],
+                [
+                  10,
+                  45
+                ],
+                [
+                  13,
+                  45
+                ],
+                [
+                  13,
+                  48
+                ],
+                [
+                  16,
+                  48
+                ],
+                [
+                  16,
+                  51
+                ],
+                [
+                  19,
+                  51
+                ],
+                [
+                  19,
+                  55
+                ],
+                [
+                  25,
+                  55
+                ],
+                [
+                  25,
+                  45
+                ],
+                [
+                  25,
+                  45
+                ],
+                [
+                  100,
+                  45
+                ]
+              ],
+              "fill": {
+                "cases": [
+                  {
+                    "when": {
+                      "var": "theme.weather_condition_colors",
+                      "op": "eq",
+                      "value": false
+                    },
+                    "fill": "GColorWhite"
+                  },
+                  {
+                    "when": {
+                      "var": "weather_available",
+                      "op": "eq",
+                      "value": false
+                    },
+                    "fill": "GColorWhite"
+                  },
+                  {
+                    "when": {
+                      "var": "weather_code",
+                      "op": "in",
+                      "value": [
+                        0,
+                        1
+                      ]
+                    },
+                    "fill": "GColorChromeYellow"
+                  },
+                  {
+                    "when": {
+                      "var": "weather_code",
+                      "op": "in",
+                      "value": [
+                        2,
+                        3,
+                        45,
+                        48
+                      ]
+                    },
+                    "fill": "GColorLightGray"
+                  },
+                  {
+                    "when": {
+                      "var": "weather_code",
+                      "op": "in",
+                      "value": [
+                        51,
+                        53,
+                        55,
+                        56,
+                        57,
+                        61,
+                        63,
+                        65,
+                        66,
+                        67,
+                        80,
+                        81,
+                        82
+                      ]
+                    },
+                    "fill": "GColorBabyBlueEyes"
+                  },
+                  {
+                    "when": {
+                      "var": "weather_code",
+                      "op": "in",
+                      "value": [
+                        95,
+                        96,
+                        99
+                      ]
+                    },
+                    "fill": "GColorVividViolet"
+                  }
+                ],
+                "default": "GColorWhite"
+              },
+              "outline": {
+                "stroke": "outline_stroke"
+              },
+              "visibleWhen": {
+                "any": [
+                  {
+                    "var": "weather_enabled",
+                    "op": "eq",
+                    "value": true
+                  },
+                  {
+                    "var": "bt",
+                    "op": "eq",
+                    "value": false
+                  }
+                ]
+              }
+            },
+            {
+              "kind": "bitmap",
+              "id": "bt",
+              "center": [
+                55,
+                28
+              ],
+              "visibleWhen": {
+                "var": "bt",
+                "op": "eq",
+                "value": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "bars",
+          "kind": "graphics",
+          "note": "redraw on battery/step/theme/mode change",
+          "items": [
+            {
+              "kind": "meterbar",
+              "box": {
+                "x": 22,
+                "y": "h/5+h/3+orange_stroke+w/shadow_div+((h-(h/5+h/3+orange_stroke+w/shadow_div))-(2*32+8+metric_shadow))/2",
+                "w": 155,
+                "h": 32
+              },
+              "stroke": "orange_stroke",
+              "shadow": {
+                "dx": 2,
+                "dy": "metric_shadow"
+              },
+              "frame": "$battery_frame",
+              "core": "$ink",
+              "value": "$battery",
+              "fill": {
+                "cases": [
+                  {
+                    "when": {
+                      "var": "theme.battery_status",
+                      "op": "eq",
+                      "value": false
+                    },
+                    "fill": "$battery_bar"
+                  },
+                  {
+                    "when": {
+                      "var": "battery",
+                      "op": "lt",
+                      "value": 20
+                    },
+                    "fill": "$battery_low"
+                  },
+                  {
+                    "when": {
+                      "var": "battery",
+                      "op": "lt",
+                      "value": 50
+                    },
+                    "fill": "$battery_mid"
+                  }
+                ],
+                "default": "$battery_high"
+              },
+              "inset": 3,
+              "compact": {
+                "maxH": 30,
+                "stroke": 3,
+                "inset": 2
+              },
+              "visibleWhen": {
+                "var": "bars_mode",
+                "op": "eq",
+                "value": 0
+              }
+            },
+            {
+              "kind": "meterbar",
+              "box": {
+                "x": 22,
+                "y": "(h/5+h/3+orange_stroke+w/shadow_div+((h-(h/5+h/3+orange_stroke+w/shadow_div))-(2*32+8+metric_shadow))/2)+32+8",
+                "w": 155,
+                "h": 32
+              },
+              "stroke": "orange_stroke",
+              "shadow": {
+                "dx": 2,
+                "dy": "metric_shadow"
+              },
+              "frame": "$battery_frame",
+              "core": "$ink",
+              "value": "$steps",
+              "fill": "$step_bar",
+              "inset": 3,
+              "compact": {
+                "maxH": 30,
+                "stroke": 3,
+                "inset": 2
+              },
+              "visibleWhen": {
+                "var": "bars_mode",
+                "op": "eq",
+                "value": 0
+              }
+            },
+            {
+              "kind": "meterbar",
+              "box": {
+                "x": 22,
+                "y": "h/5+h/3+orange_stroke+w/shadow_div+((h-(h/5+h/3+orange_stroke+w/shadow_div))-(45+metric_shadow))/2",
+                "w": 155,
+                "h": 45
+              },
+              "stroke": "orange_stroke",
+              "shadow": {
+                "dx": 2,
+                "dy": "metric_shadow"
+              },
+              "frame": "$battery_frame",
+              "core": "$ink",
+              "value": "$battery",
+              "fill": {
+                "cases": [
+                  {
+                    "when": {
+                      "var": "theme.battery_status",
+                      "op": "eq",
+                      "value": false
+                    },
+                    "fill": "$battery_bar"
+                  },
+                  {
+                    "when": {
+                      "var": "battery",
+                      "op": "lt",
+                      "value": 20
+                    },
+                    "fill": "$battery_low"
+                  },
+                  {
+                    "when": {
+                      "var": "battery",
+                      "op": "lt",
+                      "value": 50
+                    },
+                    "fill": "$battery_mid"
+                  }
+                ],
+                "default": "$battery_high"
+              },
+              "inset": 3,
+              "compact": {
+                "maxH": 30,
+                "stroke": 3,
+                "inset": 2
+              },
+              "visibleWhen": {
+                "var": "bars_mode",
+                "op": "eq",
+                "value": 1
+              }
+            },
+            {
+              "kind": "meterbar",
+              "box": {
+                "x": 22,
+                "y": "h/5+h/3+orange_stroke+w/shadow_div+((h-(h/5+h/3+orange_stroke+w/shadow_div))-(45+metric_shadow))/2",
+                "w": 155,
+                "h": 45
+              },
+              "stroke": "orange_stroke",
+              "shadow": {
+                "dx": 2,
+                "dy": "metric_shadow"
+              },
+              "frame": "$battery_frame",
+              "core": "$ink",
+              "value": "$steps",
+              "fill": "$step_bar",
+              "inset": 3,
+              "compact": {
+                "maxH": 30,
+                "stroke": 3,
+                "inset": 2
+              },
+              "visibleWhen": {
+                "var": "bars_mode",
+                "op": "eq",
+                "value": 2
+              }
+            }
+          ]
+        },
+        {
+          "id": "date",
+          "kind": "text",
+          "box": {
+            "x": 93,
+            "y": 0,
+            "w": 104,
+            "h": 40
+          },
+          "font": "jersey38",
+          "fill": "$ink",
+          "align": "center",
+          "vcenter": true,
+          "text": "$date_str"
+        },
+        {
+          "id": "weather",
+          "kind": "text",
+          "box": {
+            "x": 3,
+            "y": 0,
+            "w": 104,
+            "h": 40
+          },
+          "font": "jersey38",
+          "fill": "GColorBlack",
+          "align": "center",
+          "vcenter": true,
+          "text": "$weather_str",
+          "visibleWhen": {
+            "any": [
+              {
+                "var": "weather_enabled",
+                "op": "eq",
+                "value": true
+              },
+              {
+                "var": "bt",
+                "op": "eq",
+                "value": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "time",
+          "kind": "pixeltext",
+          "note": "the only layer redrawn every minute",
+          "box": {
+            "x": "w/10+orange_stroke",
+            "y": "h/5+orange_stroke",
+            "w": "(w*8)/10-2*orange_stroke",
+            "h": "h/3-2*orange_stroke"
+          },
+          "pixelFont": "digits",
+          "fill": "$ink",
+          "text": "$time_str",
+          "scaleDivisor": 40,
+          "scaleOverride": [
+            {
+              "when": {
+                "var": "display_hour",
+                "op": "in",
+                "value": [
+                  20,
+                  21,
+                  22,
+                  23
+                ]
+              },
+              "y": 4
+            }
+          ]
+        }
+      ]
+    },
+    "w144": {
+      "w": 144,
+      "h": 168,
+      "layers": [
+        {
+          "id": "background",
+          "kind": "graphics",
+          "note": "redraw on theme/weather/bluetooth change",
+          "items": [
+            {
+              "kind": "rect",
+              "box": {
+                "x": "w/10-orange_stroke+w/shadow_div",
+                "y": "h/5-orange_stroke+w/shadow_div",
+                "w": "(w*8)/10+2*orange_stroke",
+                "h": "h/3+2*orange_stroke"
+              },
+              "fill": "$ink"
+            },
+            {
+              "kind": "rect",
+              "box": {
+                "x": "w/10-orange_stroke",
+                "y": "h/5-orange_stroke",
+                "w": "(w*8)/10+2*orange_stroke",
+                "h": "h/3+2*orange_stroke"
+              },
+              "fill": "$ink"
+            },
+            {
+              "kind": "rect",
+              "box": {
+                "x": "w/10+orange_stroke",
+                "y": "h/5+orange_stroke",
+                "w": "(w*8)/10-2*orange_stroke",
+                "h": "h/3-2*orange_stroke"
+              },
+              "fill": "$body"
+            },
+            {
+              "kind": "polygon",
+              "points": [
+                [
+                  72,
+                  9
+                ],
+                [
+                  137,
+                  9
+                ],
+                [
+                  137,
+                  33
+                ],
+                [
+                  135,
+                  33
+                ],
+                [
+                  135,
+                  35
+                ],
+                [
+                  132,
+                  35
+                ],
+                [
+                  132,
+                  38
+                ],
+                [
+                  130,
+                  38
+                ],
+                [
+                  130,
+                  41
+                ],
+                [
+                  126,
+                  41
+                ],
+                [
+                  126,
+                  33
+                ],
+                [
+                  126,
+                  33
+                ],
+                [
+                  72,
+                  33
+                ]
+              ],
+              "fill": "GColorWhite",
+              "outline": {
+                "stroke": "outline_stroke"
+              }
+            },
+            {
+              "kind": "polygon",
+              "points": [
+                [
+                  72,
+                  9
+                ],
+                [
+                  7,
+                  9
+                ],
+                [
+                  7,
+                  33
+                ],
+                [
+                  9,
+                  33
+                ],
+                [
+                  9,
+                  35
+                ],
+                [
+                  12,
+                  35
+                ],
+                [
+                  12,
+                  38
+                ],
+                [
+                  14,
+                  38
+                ],
+                [
+                  14,
+                  41
+                ],
+                [
+                  18,
+                  41
+                ],
+                [
+                  18,
+                  33
+                ],
+                [
+                  18,
+                  33
+                ],
+                [
+                  72,
+                  33
+                ]
+              ],
+              "fill": {
+                "cases": [
+                  {
+                    "when": {
+                      "var": "theme.weather_condition_colors",
+                      "op": "eq",
+                      "value": false
+                    },
+                    "fill": "GColorWhite"
+                  },
+                  {
+                    "when": {
+                      "var": "weather_available",
+                      "op": "eq",
+                      "value": false
+                    },
+                    "fill": "GColorWhite"
+                  },
+                  {
+                    "when": {
+                      "var": "weather_code",
+                      "op": "in",
+                      "value": [
+                        0,
+                        1
+                      ]
+                    },
+                    "fill": "GColorChromeYellow"
+                  },
+                  {
+                    "when": {
+                      "var": "weather_code",
+                      "op": "in",
+                      "value": [
+                        2,
+                        3,
+                        45,
+                        48
+                      ]
+                    },
+                    "fill": "GColorLightGray"
+                  },
+                  {
+                    "when": {
+                      "var": "weather_code",
+                      "op": "in",
+                      "value": [
+                        51,
+                        53,
+                        55,
+                        56,
+                        57,
+                        61,
+                        63,
+                        65,
+                        66,
+                        67,
+                        80,
+                        81,
+                        82
+                      ]
+                    },
+                    "fill": "GColorBabyBlueEyes"
+                  },
+                  {
+                    "when": {
+                      "var": "weather_code",
+                      "op": "in",
+                      "value": [
+                        95,
+                        96,
+                        99
+                      ]
+                    },
+                    "fill": "GColorVividViolet"
+                  }
+                ],
+                "default": "GColorWhite"
+              },
+              "outline": {
+                "stroke": "outline_stroke"
+              },
+              "visibleWhen": {
+                "any": [
+                  {
+                    "var": "weather_enabled",
+                    "op": "eq",
+                    "value": true
+                  },
+                  {
+                    "var": "bt",
+                    "op": "eq",
+                    "value": false
+                  }
+                ]
+              }
+            },
+            {
+              "kind": "bitmap",
+              "id": "bt",
+              "center": [
+                39,
+                25
+              ],
+              "visibleWhen": {
+                "var": "bt",
+                "op": "eq",
+                "value": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "bars",
+          "kind": "graphics",
+          "note": "redraw on battery/step/theme/mode change",
+          "items": [
+            {
+              "kind": "meterbar",
+              "box": {
+                "x": 16,
+                "y": "h/5+h/3+orange_stroke+w/shadow_div+((h-(h/5+h/3+orange_stroke+w/shadow_div))-(2*24+6+metric_shadow))/2",
+                "w": 112,
+                "h": 24
+              },
+              "stroke": "orange_stroke",
+              "shadow": {
+                "dx": 2,
+                "dy": "metric_shadow"
+              },
+              "frame": "$battery_frame",
+              "core": "$ink",
+              "value": "$battery",
+              "fill": {
+                "cases": [
+                  {
+                    "when": {
+                      "var": "theme.battery_status",
+                      "op": "eq",
+                      "value": false
+                    },
+                    "fill": "$battery_bar"
+                  },
+                  {
+                    "when": {
+                      "var": "battery",
+                      "op": "lt",
+                      "value": 20
+                    },
+                    "fill": "$battery_low"
+                  },
+                  {
+                    "when": {
+                      "var": "battery",
+                      "op": "lt",
+                      "value": 50
+                    },
+                    "fill": "$battery_mid"
+                  }
+                ],
+                "default": "$battery_high"
+              },
+              "inset": 3,
+              "compact": {
+                "maxH": 30,
+                "stroke": 3,
+                "inset": 2
+              },
+              "visibleWhen": {
+                "var": "bars_mode",
+                "op": "eq",
+                "value": 0
+              }
+            },
+            {
+              "kind": "meterbar",
+              "box": {
+                "x": 16,
+                "y": "(h/5+h/3+orange_stroke+w/shadow_div+((h-(h/5+h/3+orange_stroke+w/shadow_div))-(2*24+6+metric_shadow))/2)+24+6",
+                "w": 112,
+                "h": 24
+              },
+              "stroke": "orange_stroke",
+              "shadow": {
+                "dx": 2,
+                "dy": "metric_shadow"
+              },
+              "frame": "$battery_frame",
+              "core": "$ink",
+              "value": "$steps",
+              "fill": "$step_bar",
+              "inset": 3,
+              "compact": {
+                "maxH": 30,
+                "stroke": 3,
+                "inset": 2
+              },
+              "visibleWhen": {
+                "var": "bars_mode",
+                "op": "eq",
+                "value": 0
+              }
+            },
+            {
+              "kind": "meterbar",
+              "box": {
+                "x": 16,
+                "y": "h/5+h/3+orange_stroke+w/shadow_div+((h-(h/5+h/3+orange_stroke+w/shadow_div))-(38+metric_shadow))/2",
+                "w": 112,
+                "h": 38
+              },
+              "stroke": "orange_stroke",
+              "shadow": {
+                "dx": 2,
+                "dy": "metric_shadow"
+              },
+              "frame": "$battery_frame",
+              "core": "$ink",
+              "value": "$battery",
+              "fill": {
+                "cases": [
+                  {
+                    "when": {
+                      "var": "theme.battery_status",
+                      "op": "eq",
+                      "value": false
+                    },
+                    "fill": "$battery_bar"
+                  },
+                  {
+                    "when": {
+                      "var": "battery",
+                      "op": "lt",
+                      "value": 20
+                    },
+                    "fill": "$battery_low"
+                  },
+                  {
+                    "when": {
+                      "var": "battery",
+                      "op": "lt",
+                      "value": 50
+                    },
+                    "fill": "$battery_mid"
+                  }
+                ],
+                "default": "$battery_high"
+              },
+              "inset": 3,
+              "compact": {
+                "maxH": 30,
+                "stroke": 3,
+                "inset": 2
+              },
+              "visibleWhen": {
+                "var": "bars_mode",
+                "op": "eq",
+                "value": 1
+              }
+            },
+            {
+              "kind": "meterbar",
+              "box": {
+                "x": 16,
+                "y": "h/5+h/3+orange_stroke+w/shadow_div+((h-(h/5+h/3+orange_stroke+w/shadow_div))-(38+metric_shadow))/2",
+                "w": 112,
+                "h": 38
+              },
+              "stroke": "orange_stroke",
+              "shadow": {
+                "dx": 2,
+                "dy": "metric_shadow"
+              },
+              "frame": "$battery_frame",
+              "core": "$ink",
+              "value": "$steps",
+              "fill": "$step_bar",
+              "inset": 3,
+              "compact": {
+                "maxH": 30,
+                "stroke": 3,
+                "inset": 2
+              },
+              "visibleWhen": {
+                "var": "bars_mode",
+                "op": "eq",
+                "value": 2
+              }
+            }
+          ]
+        },
+        {
+          "id": "date",
+          "kind": "text",
+          "box": {
+            "x": 69,
+            "y": 3,
+            "w": 72,
+            "h": 28
+          },
+          "font": "jersey25",
+          "fill": "$ink",
+          "align": "center",
+          "vcenter": true,
+          "text": "$date_str"
+        },
+        {
+          "id": "weather",
+          "kind": "text",
+          "box": {
+            "x": 3,
+            "y": 3,
+            "w": 72,
+            "h": 28
+          },
+          "font": "jersey25",
+          "fill": "GColorBlack",
+          "align": "center",
+          "vcenter": true,
+          "text": "$weather_str",
+          "visibleWhen": {
+            "any": [
+              {
+                "var": "weather_enabled",
+                "op": "eq",
+                "value": true
+              },
+              {
+                "var": "bt",
+                "op": "eq",
+                "value": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "time",
+          "kind": "pixeltext",
+          "note": "the only layer redrawn every minute",
+          "box": {
+            "x": "w/10+orange_stroke",
+            "y": "h/5+orange_stroke",
+            "w": "(w*8)/10-2*orange_stroke",
+            "h": "h/3-2*orange_stroke"
+          },
+          "pixelFont": "digits",
+          "fill": "$ink",
+          "text": "$time_str",
+          "scaleDivisor": 40
+        }
+      ]
+    }
+  },
+  "themes": [
+    {
+      "name": "neubrutalism",
+      "tokens": {
+        "background": "GColorPastelYellow",
+        "body": "GColorOrange",
+        "accent": "GColorChromeYellow",
+        "battery_frame": "GColorPastelYellow",
+        "battery_bar": "GColorLavenderIndigo",
+        "ink": "GColorBlack",
+        "battery_low": "GColorRed",
+        "battery_mid": "GColorChromeYellow",
+        "battery_high": "GColorMayGreen",
+        "step_bar": "GColorLavenderIndigo"
+      },
+      "flags": {
+        "battery_status": true,
+        "weather_condition_colors": true
+      }
+    },
+    {
+      "name": "game_boy_green",
+      "tokens": {
+        "background": "GColorLightGray",
+        "body": "GColorMayGreen",
+        "accent": "GColorMintGreen",
+        "battery_frame": "GColorLightGray",
+        "battery_bar": "GColorDarkGreen",
+        "ink": "GColorBlack",
+        "battery_low": "GColorDarkGreen",
+        "battery_mid": "GColorDarkGreen",
+        "battery_high": "GColorDarkGreen",
+        "step_bar": "GColorMintGreen"
+      },
+      "flags": {
+        "battery_status": false,
+        "weather_condition_colors": false
+      }
+    },
+    {
+      "name": "ocean_blue",
+      "tokens": {
+        "background": "GColorCeleste",
+        "body": "GColorPictonBlue",
+        "accent": "GColorElectricBlue",
+        "battery_frame": "GColorCeleste",
+        "battery_bar": "GColorCobaltBlue",
+        "ink": "GColorBlack",
+        "battery_low": "GColorCobaltBlue",
+        "battery_mid": "GColorCobaltBlue",
+        "battery_high": "GColorCobaltBlue",
+        "step_bar": "GColorElectricBlue"
+      },
+      "flags": {
+        "battery_status": false,
+        "weather_condition_colors": false
+      }
+    },
+    {
+      "name": "amber_lcd",
+      "tokens": {
+        "background": "GColorPastelYellow",
+        "body": "GColorChromeYellow",
+        "accent": "GColorIcterine",
+        "battery_frame": "GColorPastelYellow",
+        "battery_bar": "GColorOrange",
+        "ink": "GColorBlack",
+        "battery_low": "GColorOrange",
+        "battery_mid": "GColorOrange",
+        "battery_high": "GColorOrange",
+        "step_bar": "GColorIcterine"
+      },
+      "flags": {
+        "battery_status": false,
+        "weather_condition_colors": false
+      }
+    },
+    {
+      "name": "monochrome",
+      "tokens": {
+        "background": "GColorLightGray",
+        "body": "GColorWhite",
+        "accent": "GColorWhite",
+        "battery_frame": "GColorLightGray",
+        "battery_bar": "GColorDarkGray",
+        "ink": "GColorBlack",
+        "battery_low": "GColorDarkGray",
+        "battery_mid": "GColorDarkGray",
+        "battery_high": "GColorDarkGray",
+        "step_bar": "GColorWhite"
+      },
+      "flags": {
+        "battery_status": false,
+        "weather_condition_colors": false
+      }
+    },
+    {
+      "name": "purple_pixel",
+      "tokens": {
+        "background": "GColorRichBrilliantLavender",
+        "body": "GColorLavenderIndigo",
+        "accent": "GColorBabyBlueEyes",
+        "battery_frame": "GColorRichBrilliantLavender",
+        "battery_bar": "GColorIndigo",
+        "ink": "GColorBlack",
+        "battery_low": "GColorIndigo",
+        "battery_mid": "GColorIndigo",
+        "battery_high": "GColorIndigo",
+        "step_bar": "GColorBabyBlueEyes"
+      },
+      "flags": {
+        "battery_status": false,
+        "weather_condition_colors": false
+      }
+    }
+  ],
+  "state": [
+    {
+      "name": "time_str",
+      "type": "string",
+      "desc": "formatted time, host-side 12/24h handling"
+    },
+    {
+      "name": "date_str",
+      "type": "string",
+      "desc": "uppercased date, host formatted"
+    },
+    {
+      "name": "display_hour",
+      "type": "int",
+      "desc": "displayed hour, drives pixel squash quirk"
+    },
+    {
+      "name": "weather_str",
+      "type": "string",
+      "desc": "formatted temp+units or placeholder"
+    },
+    {
+      "name": "battery",
+      "type": "int",
+      "desc": "battery percent 0-100"
+    },
+    {
+      "name": "steps",
+      "type": "int",
+      "desc": "step-goal percent 0-100"
+    },
+    {
+      "name": "weather_code",
+      "type": "int",
+      "desc": "WMO weather code"
+    },
+    {
+      "name": "weather_available",
+      "type": "bool"
+    },
+    {
+      "name": "weather_enabled",
+      "type": "bool"
+    },
+    {
+      "name": "bt",
+      "type": "bool",
+      "desc": "bluetooth connected"
+    },
+    {
+      "name": "bars_mode",
+      "type": "int",
+      "desc": "0 both, 1 battery, 2 steps"
+    }
+  ],
+  "fonts": [
+    {
+      "id": "jersey38",
+      "resource": "FONT_JERSEY_38"
+    },
+    {
+      "id": "jersey25",
+      "resource": "FONT_JERSEY_25"
+    }
+  ],
+  "bitmaps": [
+    {
+      "id": "bt",
+      "resource": "IMAGE_BT_DISCONNECT"
+    }
+  ],
+  "pixelFonts": {
+    "digits": {
+      "rows": 10,
+      "chars": {
+        "0": [
+          "011110",
+          "110011",
+          "110011",
+          "110011",
+          "110011",
+          "110011",
+          "110011",
+          "110011",
+          "110011",
+          "011110"
+        ],
+        "1": [
+          "111",
+          "111",
+          "011",
+          "011",
+          "011",
+          "011",
+          "011",
+          "011",
+          "011",
+          "011"
+        ],
+        "2": [
+          "0111110",
+          "1111111",
+          "1100011",
+          "0000111",
+          "0001110",
+          "0011100",
+          "0111000",
+          "1110000",
+          "1111111",
+          "1111111"
+        ],
+        "3": [
+          "0111110",
+          "1111111",
+          "1100011",
+          "0000011",
+          "0011110",
+          "0011110",
+          "0000011",
+          "1100011",
+          "1111111",
+          "0111110"
+        ],
+        "4": [
+          "000011",
+          "000111",
+          "001111",
+          "011011",
+          "110011",
+          "110011",
+          "111111",
+          "111111",
+          "000011",
+          "000011"
+        ],
+        "5": [
+          "111111",
+          "111111",
+          "110000",
+          "110000",
+          "111110",
+          "011111",
+          "000011",
+          "110011",
+          "111111",
+          "011110"
+        ],
+        "6": [
+          "0111110",
+          "1111111",
+          "1100011",
+          "1100000",
+          "1111110",
+          "1111111",
+          "1100011",
+          "1100011",
+          "1111111",
+          "0111110"
+        ],
+        "7": [
+          "111111",
+          "111111",
+          "000011",
+          "000011",
+          "000111",
+          "001110",
+          "001110",
+          "001100",
+          "001100",
+          "001100"
+        ],
+        "8": [
+          "0111110",
+          "1111111",
+          "1100011",
+          "1100011",
+          "0111110",
+          "1111111",
+          "1100011",
+          "1100011",
+          "1111111",
+          "0111110"
+        ],
+        "9": [
+          "0111110",
+          "1111111",
+          "1100011",
+          "1100011",
+          "1111111",
+          "0111111",
+          "0000011",
+          "1100011",
+          "1111111",
+          "0111110"
+        ],
+        ":": [
+          "00",
+          "00",
+          "11",
+          "11",
+          "00",
+          "00",
+          "00",
+          "00",
+          "11",
+          "11"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,347 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/pebble-editor/design.schema.json",
+  "title": "Pebble visual editor design file (schema v1)",
+  "description": "Single source of truth for a Pebble watchface's visuals. Pebble-only, one-way: design.json -> generated C. See tools/pebble-editor/docs/.",
+  "type": "object",
+  "required": ["schema", "name", "screens", "themes", "state"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": 1,
+      "description": "Schema version. New primitives arrive as v2+; v1 files keep validating."
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "constants": {
+      "description": "Named integer constants usable inside dimension expressions.",
+      "type": "object",
+      "default": {},
+      "additionalProperties": { "type": "integer", "minimum": 0 },
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$" }
+    },
+    "screens": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["w", "h", "layers"],
+        "additionalProperties": false,
+        "properties": {
+          "w": { "type": "integer", "minimum": 1 },
+          "h": { "type": "integer", "minimum": 1 },
+          "layers": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/definitions/layer" }
+          }
+        }
+      }
+    },
+    "themes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "tokens"],
+        "additionalProperties": false,
+        "properties": {
+    "name": { "type": "string", "minLength": 1 },
+          "tokens": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": { "$ref": "#/definitions/gcolor" },
+            "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$" }
+          },
+          "flags": {
+            "type": "object",
+            "additionalProperties": { "type": "boolean" },
+            "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$" },
+            "default": {}
+          }
+        }
+      }
+    },
+    "state": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "pattern": "^[a-z][a-z0-9_]*$" },
+          "type": { "enum": ["int", "bool", "string"] },
+          "desc": { "type": "string" }
+        }
+      }
+    },
+    "fonts": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": ["id", "resource"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "pattern": "^[a-z][a-z0-9_]*$" },
+          "resource": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "bitmaps": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": ["id", "resource"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "pattern": "^[a-z][a-z0-9_]*$" },
+          "resource": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "pixelFonts": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": {
+        "type": "object",
+        "required": ["rows", "chars"],
+        "additionalProperties": false,
+        "properties": {
+          "rows": { "type": "integer", "minimum": 1 },
+          "chars": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "pattern": "^[01]+$" }
+            }
+          }
+        }
+      },
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$" }
+    }
+  },
+  "definitions": {
+    "gcolor": {
+      "type": "string",
+      "pattern": "^GColor[A-Z][A-Za-z0-9]*$"
+    },
+    "dim": {
+      "description": "Integer device pixels, or an expression over w/h/named constants with + - * / and parens (integer division, truncating).",
+      "anyOf": [
+        { "type": "integer" },
+        { "type": "string", "minLength": 1 }
+      ]
+    },
+    "fill": {
+      "description": "A GColor literal, a $theme-token reference, or an ordered conditional.",
+      "anyOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": ["cases", "default"],
+          "additionalProperties": false,
+          "properties": {
+            "cases": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["when", "fill"],
+                "additionalProperties": false,
+                "properties": {
+                  "when": { "$ref": "#/definitions/condition" },
+                  "fill": { "type": "string" }
+                }
+              }
+            },
+            "default": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "condition": {
+      "description": "AND-list of tests, or {any:[...]} for OR. First matching case wins.",
+      "anyOf": [
+        { "$ref": "#/definitions/test" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/test" }
+        },
+        {
+          "type": "object",
+          "required": ["any"],
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/definitions/test" }
+            }
+          }
+        }
+      ]
+    },
+    "test": {
+      "type": "object",
+      "required": ["var", "op", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "var": {
+          "description": "State var name, or theme.<flag> for a theme flag.",
+          "type": "string",
+          "minLength": 1
+        },
+        "op": { "enum": ["eq", "lt", "lte", "gt", "gte", "in"] },
+        "value": {}
+      }
+    },
+    "box": {
+      "type": "object",
+      "required": ["x", "y", "w", "h"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "$ref": "#/definitions/dim" },
+        "y": { "$ref": "#/definitions/dim" },
+        "w": { "$ref": "#/definitions/dim" },
+        "h": { "$ref": "#/definitions/dim" }
+      }
+    },
+    "layer": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "pattern": "^[a-z][a-z0-9_]*$" },
+        "kind": { "enum": ["graphics", "text", "pixeltext"] },
+        "note": { "type": "string" },
+        "visibleWhen": { "$ref": "#/definitions/condition" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/primitive" }
+        },
+        "box": { "$ref": "#/definitions/box" },
+        "font": { "type": "string" },
+        "fill": { "$ref": "#/definitions/fill" },
+        "align": { "enum": ["left", "center", "right"] },
+        "vcenter": { "type": "boolean" },
+        "text": { "type": "string" },
+        "pixelFont": { "type": "string" },
+        "scaleDivisor": { "type": "integer", "minimum": 1 },
+        "scaleOverride": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["when"],
+            "additionalProperties": false,
+            "properties": {
+              "when": { "$ref": "#/definitions/condition" },
+              "x": { "$ref": "#/definitions/dim" },
+              "y": { "$ref": "#/definitions/dim" }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "graphics" } } },
+          "then": { "required": ["items"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "text" } } },
+          "then": { "required": ["box", "font", "fill", "text"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "pixeltext" } } },
+          "then": { "required": ["box", "pixelFont", "fill", "text", "scaleDivisor"] }
+        }
+      ]
+    },
+    "primitive": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["rect", "polygon", "meterbar", "bitmap"] },
+        "visibleWhen": { "$ref": "#/definitions/condition" },
+        "box": { "$ref": "#/definitions/box" },
+        "fill": { "$ref": "#/definitions/fill" },
+        "points": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "$ref": "#/definitions/dim" }
+          }
+        },
+        "outline": {
+          "type": "object",
+          "required": ["stroke"],
+          "additionalProperties": false,
+          "properties": {
+            "stroke": { "$ref": "#/definitions/dim" }
+          }
+        },
+        "stroke": { "$ref": "#/definitions/dim" },
+        "shadow": {
+          "type": "object",
+          "required": ["dx", "dy"],
+          "additionalProperties": false,
+          "properties": {
+            "dx": { "$ref": "#/definitions/dim" },
+            "dy": { "$ref": "#/definitions/dim" }
+          }
+        },
+        "frame": { "$ref": "#/definitions/fill" },
+        "core": { "$ref": "#/definitions/fill" },
+        "value": { "type": "string" },
+        "inset": { "type": "integer", "minimum": 0 },
+        "compact": {
+          "type": "object",
+          "required": ["maxH", "stroke", "inset"],
+          "additionalProperties": false,
+          "properties": {
+            "maxH": { "type": "integer", "minimum": 1 },
+            "stroke": { "type": "integer", "minimum": 0 },
+            "inset": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "id": { "type": "string" },
+        "center": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/definitions/dim" }
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "rect" } } },
+          "then": { "required": ["box", "fill"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "polygon" } } },
+          "then": { "required": ["points", "fill"] }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "meterbar" } }
+          },
+          "then": {
+            "required": ["box", "stroke", "shadow", "frame", "core", "value", "fill", "inset"]
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "bitmap" } } },
+          "then": { "required": ["id", "center"] }
+        }
+      ]
+    }
+  }
+}

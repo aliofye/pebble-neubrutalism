@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Pebble Editor</title>
+<link rel="stylesheet" href="/app/styles.css">
+</head>
+<body>
+<header id="topbar">
+  <div class="brand">Pebble Editor</div>
+  <input type="text" id="facePath" title="design.json path" spellcheck="false">
+  <button id="loadBtn" title="Load face">Load</button>
+  <div class="sep"></div>
+  <button id="undoBtn" title="Undo (Ctrl+Z)">Undo</button>
+  <button id="redoBtn" title="Redo (Ctrl+Shift+Z)">Redo</button>
+  <div class="sep"></div>
+  <button id="saveBtn" class="primary" title="Save design.json">Save</button>
+  <button id="genBtn" title="Generate C code">Generate C</button>
+  <div class="spacer"></div>
+  <label class="inline">Zoom <select id="zoomSel">
+    <option value="1">1x</option>
+    <option value="2">2x</option>
+    <option value="3" selected>3x</option>
+    <option value="4">4x</option>
+    <option value="6">6x</option>
+  </select></label>
+  <button id="fitBtn" title="Zoom to fit">Fit</button>
+  <button id="themeBtn" title="Toggle light / dark">☾</button>
+</header>
+<div id="workbench">
+  <aside id="left">
+    <h2 class="sec">Layers</h2>
+    <div id="layers"></div>
+    <h2 class="sec">Properties</h2>
+    <div id="props"></div>
+    <h2 class="sec">State simulator</h2>
+    <div id="simstate"></div>
+    <div id="status"></div>
+  </aside>
+  <main id="stage"></main>
+</div>
+<script src="/app/preview.js"></script>
+<script src="/app/editor-model.js"></script>
+<script src="/app/editor.js"></script>
+</body>
+</html>

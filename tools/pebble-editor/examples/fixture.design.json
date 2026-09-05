@@ -1,0 +1,187 @@
+{
+  "schema": 1,
+  "name": "fixture",
+  "constants": {
+    "pad": 8
+  },
+  "screens": {
+    "main": {
+      "w": 144,
+      "h": 168,
+      "layers": [
+        {
+          "id": "background",
+          "kind": "graphics",
+          "items": [
+            {
+              "kind": "rect",
+              "box": {
+                "x": 0,
+                "y": 0,
+                "w": "w",
+                "h": "h"
+              },
+              "fill": "$background"
+            },
+            {
+              "kind": "polygon",
+              "points": [
+                [
+                  10,
+                  10
+                ],
+                [
+                  60,
+                  10
+                ],
+                [
+                  60,
+                  30
+                ]
+              ],
+              "fill": "GColorWhite",
+              "outline": {
+                "stroke": 2
+              }
+            },
+            {
+              "kind": "meterbar",
+              "box": {
+                "x": 16,
+                "y": 120,
+                "w": 112,
+                "h": 24
+              },
+              "stroke": 2,
+              "shadow": {
+                "dx": 2,
+                "dy": 2
+              },
+              "frame": "$battery_frame",
+              "core": "$ink",
+              "value": "$battery",
+              "fill": "$battery_bar",
+              "inset": 2,
+              "compact": {
+                "maxH": 30,
+                "stroke": 2,
+                "inset": 2
+              }
+            },
+            {
+              "kind": "bitmap",
+              "id": "bt",
+              "center": [
+                122,
+                20
+              ],
+              "visibleWhen": {
+                "var": "bt",
+                "op": "eq",
+                "value": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "date",
+          "kind": "text",
+          "box": {
+            "x": 36,
+            "y": "pad",
+            "w": 72,
+            "h": 20
+          },
+          "font": "jersey",
+          "fill": "$ink",
+          "align": "center",
+          "vcenter": true,
+          "text": "$date_str"
+        },
+        {
+          "id": "time",
+          "kind": "pixeltext",
+          "box": {
+            "x": 22,
+            "y": 40,
+            "w": 100,
+            "h": 30
+          },
+          "pixelFont": "tiny",
+          "fill": "$ink",
+          "text": "$time_str",
+          "scaleDivisor": 40
+        }
+      ]
+    }
+  },
+  "themes": [
+    {
+      "name": "a",
+      "tokens": {
+        "background": "GColorPastelYellow",
+        "ink": "GColorBlack",
+        "battery_frame": "GColorPastelYellow",
+        "battery_bar": "GColorMayGreen"
+      }
+    }
+  ],
+  "state": [
+    {
+      "name": "time_str",
+      "type": "string"
+    },
+    {
+      "name": "date_str",
+      "type": "string"
+    },
+    {
+      "name": "battery",
+      "type": "int"
+    },
+    {
+      "name": "bt",
+      "type": "bool"
+    }
+  ],
+  "fonts": [
+    {
+      "id": "jersey",
+      "resource": "FONT_JERSEY_25"
+    }
+  ],
+  "bitmaps": [
+    {
+      "id": "bt",
+      "resource": "IMAGE_BT_DISCONNECT"
+    }
+  ],
+  "pixelFonts": {
+    "tiny": {
+      "rows": 5,
+      "chars": {
+        "0": [
+          "111",
+          "101",
+          "101",
+          "101",
+          "111"
+        ],
+        "1": [
+          "010",
+          "110",
+          "010",
+          "010",
+          "111"
+        ],
+        ":": [
+          "00",
+          "10",
+          "00",
+          "10",
+          "00"
+        ]
+      }
+    }
+  }
+}
