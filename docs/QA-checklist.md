@@ -35,10 +35,10 @@ emulator and/or a real watch after any watch-side change.
 - [ ] Switching temperature units (F/C) in the phone app refetches and redraws the
       bubble with the new unit.
 - [ ] On a real phone: location permission is granted and the temperature is
-      reasonably current (3-hourly refresh with a 30-minute location cache).
+      reasonably current (hourly refresh with a 30-minute location cache).
 - [ ] Turning **Show Weather** off hides the white bubble entirely and stops
       background location/weather requests; turning it back on restores the bubble
-      and resumes the 3-hourly refresh.
+      and resumes the hourly refresh.
 
 ## Color themes
 - [ ] Each theme (Neubrutalism, Game Boy Green, Ocean Blue, Amber LCD, Monochrome,

@@ -4,7 +4,7 @@
 
 **Goal:** Cut watchface battery drain on both the watch (C) and phone (JS) sides without any visual change.
 
-**Architecture:** Four independent changes: (1) reduce JS weather fetch frequency and GPS cache strictness, (2) replace per-movement health-event wakeups with per-minute polling, (3) use the tick's `tm` and skip redundant persist writes, (4) split the single full-screen canvas into three dirty-tracked layers (static chrome / bars / time digits).
+**Architecture:** Four independent changes: (1) relax JS weather GPS cache strictness while keeping the hourly fetch cadence, (2) replace per-movement health-event wakeups with per-minute polling, (3) use the tick's `tm` and skip redundant persist writes, (4) split the single full-screen canvas into three dirty-tracked layers (static chrome / bars / time digits).
 
 **Tech Stack:** Pebble SDK 3 (C), PebbleKit JS + Clay, Jest.
 
@@ -21,6 +21,8 @@
 
 ### Task 1: JS weather/GPS tuning
 
+**Revision (2026-09-05, post-review):** originally planned a 3-hour fetch interval; reverted to hourly because the bubble felt stale. The shipped change is a **30-minute location cache only** — fetches stay hourly, so the phone-side win comes from avoiding fresh GPS fixes, not fewer requests.
+
 **Files:**
 - Modify: `src/pkjs/index.js`
 - Test: `test/index.test.js`
@@ -29,11 +31,11 @@
 - [ ] **Step 1: Add failing tests** to `test/index.test.js`:
 
 ```js
-it('schedules weather fetches every 3 hours', () => {
+it('schedules weather fetches every hour', () => {
   fire('appmessage', { payload: { WEATHER_ENABLED: 0 } }); // stop any timer
   const spy = jest.spyOn(global, 'setInterval');
   fire('appmessage', { payload: { WEATHER_ENABLED: 1 } });
-  expect(spy).toHaveBeenCalledWith(expect.any(Function), 3 * 60 * 60 * 1000);
+  expect(spy).toHaveBeenCalledWith(expect.any(Function), 60 * 60 * 1000);
   spy.mockRestore();
 });
 
@@ -50,9 +52,9 @@ it('accepts a 30 minute old cached location', () => {
 ```
 
 - [ ] **Step 2:** `npm test` → both new tests FAIL.
-- [ ] **Step 3:** In `src/pkjs/index.js`, add constants and use them (interval 3h, maximumAge 30min).
-- [ ] **Step 4:** `npm test` → all PASS. Update QA-checklist "hourly refresh" wording.
-- [ ] **Step 5:** Commit: `perf: fetch weather every 3h with 30min location cache`
+- [ ] **Step 3:** In `src/pkjs/index.js`, add constants and use them (interval 1h, maximumAge 30min).
+- [ ] **Step 4:** `npm test` → all PASS. Keep QA-checklist "hourly refresh" wording.
+- [ ] **Step 5:** Commit: `perf: fetch weather hourly with 30min location cache`
 
 ### Task 2: Throttle health updates (C)
 

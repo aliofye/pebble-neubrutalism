@@ -10,8 +10,8 @@ var currentWeatherUnits = 0;
 var weatherFetchPending = false;
 var weatherEnabled = true;
 var weatherTimer = null;
-var WEATHER_FETCH_INTERVAL_MS = 3 * 60 * 60 * 1000; // weather changes slowly
-var LOCATION_CACHE_MS = 30 * 60 * 1000;             // city-level accuracy is enough
+var WEATHER_FETCH_INTERVAL_MS = 60 * 60 * 1000; // hourly; keeps the bubble fresh
+var LOCATION_CACHE_MS = 30 * 60 * 1000;         // city-level accuracy is enough
 
 function parseBool(value) {
   return value === true || value === 'true' || value === 1 || value === '1' ||
