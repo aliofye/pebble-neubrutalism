@@ -79,6 +79,27 @@ describe('index', () => {
     expect(clayInstance.setSettings).not.toHaveBeenCalledWith('WEATHER_UNITS', 5);
   });
 
+  it('schedules weather fetches every 3 hours', () => {
+    // Disable first so the test starts from a known timer state.
+    fire('appmessage', { payload: { WEATHER_ENABLED: 0 } });
+    const spy = jest.spyOn(global, 'setInterval');
+    fire('appmessage', { payload: { WEATHER_ENABLED: 1 } });
+    expect(spy).toHaveBeenCalledWith(expect.any(Function), 3 * 60 * 60 * 1000);
+    spy.mockRestore();
+  });
+
+  it('accepts a 30 minute old cached location', () => {
+    const getCurrentPosition = jest.fn((success, error) => error({}));
+    global.navigator = { geolocation: { getCurrentPosition } };
+    fire('appmessage', { payload: { WEATHER_ENABLED: 0 } });
+    fire('appmessage', { payload: { WEATHER_ENABLED: 1 } }); // triggers immediate fetch
+    expect(getCurrentPosition).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.any(Function),
+      { timeout: 15000, maximumAge: 30 * 60 * 1000 }
+    );
+  });
+
   it('stops the weather timer when weather is disabled and restarts it when enabled', () => {
     // Disable first so the test starts from a known timer state.
     fire('appmessage', { payload: { WEATHER_ENABLED: 0 } });

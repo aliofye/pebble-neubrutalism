@@ -10,6 +10,8 @@ var currentWeatherUnits = 0;
 var weatherFetchPending = false;
 var weatherEnabled = true;
 var weatherTimer = null;
+var WEATHER_FETCH_INTERVAL_MS = 3 * 60 * 60 * 1000; // weather changes slowly
+var LOCATION_CACHE_MS = 30 * 60 * 1000;             // city-level accuracy is enough
 
 function parseBool(value) {
   return value === true || value === 'true' || value === 1 || value === '1' ||
@@ -19,7 +21,7 @@ function parseBool(value) {
 function syncWeatherScheduling() {
   if (weatherEnabled) {
     if (weatherTimer === null) {
-      weatherTimer = setInterval(fetchWeatherForLocation, 60 * 60 * 1000);
+      weatherTimer = setInterval(fetchWeatherForLocation, WEATHER_FETCH_INTERVAL_MS);
     }
     fetchWeatherForLocation();
   } else {
@@ -81,7 +83,7 @@ function fetchWeatherForLocation() {
   }, function(error) {
     weatherFetchPending = false;
     console.log('Could not get location: ' + JSON.stringify(error));
-  }, { timeout: 15000, maximumAge: 600000 });
+  }, { timeout: 15000, maximumAge: LOCATION_CACHE_MS });
 }
 
 function openConfiguration() {
