@@ -6,6 +6,7 @@
 #include "glyphs.h"
 #include "layout.h"
 #include "message_keys.auto.h"
+#include "steps_util.h"
 #include "time_util.h"
 
 // TEMP: debug — cycle the weather bubble through every condition color and the
@@ -103,6 +104,7 @@ typedef struct {
   GColor battery_high;
   bool weather_condition_colors;
   GColor step_bar;
+  GColor step_bar_dark;
 } ColorTheme;
 
 static const ColorTheme s_color_themes[THEME_COUNT] = {
@@ -119,6 +121,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_high = GColorMayGreen,
     .weather_condition_colors = true,
     .step_bar = GColorLavenderIndigo,
+    .step_bar_dark = GColorIndigo,
   },
   [THEME_GAME_BOY_GREEN] = {
     .background = GColorLightGray,
@@ -128,6 +131,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_bar = GColorDarkGreen,
     .ink = GColorBlack,
     .step_bar = GColorMintGreen,
+    .step_bar_dark = GColorMediumSpringGreen,
   },
   [THEME_OCEAN_BLUE] = {
     .background = GColorCeleste,
@@ -137,6 +141,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_bar = GColorCobaltBlue,
     .ink = GColorBlack,
     .step_bar = GColorElectricBlue,
+    .step_bar_dark = GColorCobaltBlue,
   },
   [THEME_AMBER_LCD] = {
     .background = GColorPastelYellow,
@@ -146,6 +151,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_bar = GColorOrange,
     .ink = GColorBlack,
     .step_bar = GColorIcterine,
+    .step_bar_dark = GColorChromeYellow,
   },
   [THEME_MONOCHROME] = {
     .background = GColorLightGray,
@@ -155,6 +161,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_bar = GColorDarkGray,
     .ink = GColorBlack,
     .step_bar = GColorWhite,
+    .step_bar_dark = GColorLightGray,
   },
   [THEME_PURPLE_PIXEL] = {
     .background = GColorRichBrilliantLavender,
@@ -164,6 +171,7 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
     .battery_bar = GColorIndigo,
     .ink = GColorBlack,
     .step_bar = GColorBabyBlueEyes,
+    .step_bar_dark = GColorIndigo,
   },
 };
 
@@ -358,9 +366,9 @@ static void prv_update_step_progress(void) {
 #if defined(PBL_HEALTH)
   const HealthValue steps = health_service_sum_today(HealthMetricStepCount);
   if (steps > 0) {
-    progress = steps >= s_daily_step_goal
-        ? 100
-        : (int)((steps * 100) / s_daily_step_goal);
+    // Uncapped on purpose: the bar fill clamps at full, the overflow
+    // overwrite reads the remainder.
+    progress = step_goal_percent(steps, s_daily_step_goal);
   }
 #endif
 
@@ -535,15 +543,51 @@ static void prv_draw_metric_bar(GContext *ctx, const ColorTheme *theme, GRect bo
   graphics_context_set_fill_color(ctx, theme->ink);
   graphics_fill_rect(ctx, core, 0, GCornerNone);
 
-  // Colored progress bar
+  // Colored progress bar. Percent may exceed 100 (step-goal overflow);
+  // the fill clamps at full and the overflow overwrite shows the rest.
   GRect bar = core;
   bar.origin.x += inner_inset;
   bar.origin.y += inner_inset;
   bar.size.w -= 2 * inner_inset;
   bar.size.h -= 2 * inner_inset;
-  bar.size.w = (int16_t)((bar.size.w * percent) / 100);
+  const int16_t clamped = percent > 100 ? 100 : percent;
+  bar.size.w = (int16_t)((bar.size.w * clamped) / 100);
   graphics_context_set_fill_color(ctx, fill);
   graphics_fill_rect(ctx, bar, 0, GCornerNone);
+
+  // Overflow overwrite: the same region redrawn in the theme's darker step
+  // shade, growing left-to-right with overflow (100->200% rescaled across
+  // the fill). The leading edge dissolves into the base fill with a
+  // checkerboard dither fade (flat pixels only: no gradients, still
+  // axis-aligned). Under 100% this block never runs, so normal bars are
+  // pixel-identical to before.
+  if (percent > 100) {
+    const int16_t ow = (int16_t)overflow_overwrite_width(bar.size.w, percent);
+    const int16_t y = bar.origin.y;
+    const int16_t h = bar.size.h;
+    const int16_t end = bar.origin.x + ow;
+    const int16_t fade_w = ow < 8 ? ow : 8;
+    const int16_t solid_end = end - fade_w;
+    graphics_context_set_fill_color(ctx, theme->step_bar_dark);
+    graphics_fill_rect(ctx, GRect(bar.origin.x, y, solid_end - bar.origin.x, h),
+                       0, GCornerNone);
+    for (int16_t dx = 0; dx < fade_w; dx += 2) {
+      for (int16_t dy = 0; dy < h; dy += 2) {
+        if ((((solid_end + dx) >> 1) + ((y + dy) >> 1)) & 1) {
+          continue;
+        }
+        int16_t cw = 2;
+        if (dx + cw > fade_w) {
+          cw = fade_w - dx;
+        }
+        int16_t ch = 2;
+        if (dy + ch > h) {
+          ch = h - dy;
+        }
+        graphics_fill_rect(ctx, GRect(solid_end + dx, y + dy, cw, ch), 0, GCornerNone);
+      }
+    }
+  }
 }
 
 static GColor prv_battery_color(const ColorTheme *theme, int percent) {
