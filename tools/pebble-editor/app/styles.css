@@ -165,6 +165,12 @@ canvas {
   border-radius: 2px;
 }
 
+/* Monochrome preview: approximates the B&W 144×168 watches. Grayscale is
+   an approximation — real 1-bit dithering happens on-device. */
+canvas.bw {
+  filter: grayscale(1) contrast(1.15);
+}
+
 /* ---------- panels ---------- */
 
 h2.sec {
@@ -270,6 +276,17 @@ button.primary:hover { filter: brightness(1.1); }
 }
 
 #props input, #props textarea { margin-top: 2px; }
+
+#toolbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+#toolbar button.active { border-color: var(--accent); background: var(--accent-soft); }
+.item {
+  display: flex; gap: 6px; align-items: center; font-size: 11px;
+  padding: 3px 8px 3px 26px; color: var(--text-dim); cursor: pointer;
+  border: 1px solid transparent; border-radius: 6px;
+}
+.item:hover { background: var(--bg-hover); }
+.item.sel { border-color: var(--selection); color: var(--text); }
+.item .ibadge { color: var(--text-faint); font-size: 10px; margin-left: auto; }
 
 .dimline {
   font-size: 11px;

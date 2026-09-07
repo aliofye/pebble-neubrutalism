@@ -3,8 +3,6 @@
 
 #include <string.h>
 
-#include "glyphs.h"
-
 const NeubrutalismPlusTheme NEUBRUTALISM_PLUS_THEMES[6] = {
   { /* neubrutalism */
     .background = GColorPastelYellow,
@@ -174,6 +172,167 @@ static const GPoint NEUBRUTALISM_PLUS_W200_BACKGROUND_POLY1_PTS[] = {
 static const GPathInfo NEUBRUTALISM_PLUS_W200_BACKGROUND_POLY1_INFO = { 13, (GPoint *)NEUBRUTALISM_PLUS_W200_BACKGROUND_POLY1_PTS };
 
 static GPath *s_neubrutalism_plus_w200_background_p1;
+
+static const char * const NEUBRUTALISM_PLUS_DIGITS_R0[] = {
+    "011110",
+    "110011",
+    "110011",
+    "110011",
+    "110011",
+    "110011",
+    "110011",
+    "110011",
+    "110011",
+    "011110"
+  };
+
+static const char * const NEUBRUTALISM_PLUS_DIGITS_R1[] = {
+    "111",
+    "111",
+    "011",
+    "011",
+    "011",
+    "011",
+    "011",
+    "011",
+    "011",
+    "011"
+  };
+
+static const char * const NEUBRUTALISM_PLUS_DIGITS_R2[] = {
+    "0111110",
+    "1111111",
+    "1100011",
+    "0000111",
+    "0001110",
+    "0011100",
+    "0111000",
+    "1110000",
+    "1111111",
+    "1111111"
+  };
+
+static const char * const NEUBRUTALISM_PLUS_DIGITS_R3[] = {
+    "0111110",
+    "1111111",
+    "1100011",
+    "0000011",
+    "0011110",
+    "0011110",
+    "0000011",
+    "1100011",
+    "1111111",
+    "0111110"
+  };
+
+static const char * const NEUBRUTALISM_PLUS_DIGITS_R4[] = {
+    "000011",
+    "000111",
+    "001111",
+    "011011",
+    "110011",
+    "110011",
+    "111111",
+    "111111",
+    "000011",
+    "000011"
+  };
+
+static const char * const NEUBRUTALISM_PLUS_DIGITS_R5[] = {
+    "111111",
+    "111111",
+    "110000",
+    "110000",
+    "111110",
+    "011111",
+    "000011",
+    "110011",
+    "111111",
+    "011110"
+  };
+
+static const char * const NEUBRUTALISM_PLUS_DIGITS_R6[] = {
+    "0111110",
+    "1111111",
+    "1100011",
+    "1100000",
+    "1111110",
+    "1111111",
+    "1100011",
+    "1100011",
+    "1111111",
+    "0111110"
+  };
+
+static const char * const NEUBRUTALISM_PLUS_DIGITS_R7[] = {
+    "111111",
+    "111111",
+    "000011",
+    "000011",
+    "000111",
+    "001110",
+    "001110",
+    "001100",
+    "001100",
+    "001100"
+  };
+
+static const char * const NEUBRUTALISM_PLUS_DIGITS_R8[] = {
+    "0111110",
+    "1111111",
+    "1100011",
+    "1100011",
+    "0111110",
+    "1111111",
+    "1100011",
+    "1100011",
+    "1111111",
+    "0111110"
+  };
+
+static const char * const NEUBRUTALISM_PLUS_DIGITS_R9[] = {
+    "0111110",
+    "1111111",
+    "1100011",
+    "1100011",
+    "1111111",
+    "0111111",
+    "0000011",
+    "1100011",
+    "1111111",
+    "0111110"
+  };
+
+static const char * const NEUBRUTALISM_PLUS_DIGITS_R10[] = {
+    "00",
+    "00",
+    "11",
+    "11",
+    "00",
+    "00",
+    "00",
+    "00",
+    "11",
+    "11"
+  };
+
+typedef struct { char ch; uint8_t w; const char * const *rows; } NEUBRUTALISM_PLUS_DIGITS_Glyph;
+
+static const NEUBRUTALISM_PLUS_DIGITS_Glyph NEUBRUTALISM_PLUS_DIGITS_GLYPHS[] = {
+    {'0', 6, NEUBRUTALISM_PLUS_DIGITS_R0},
+    {'1', 3, NEUBRUTALISM_PLUS_DIGITS_R1},
+    {'2', 7, NEUBRUTALISM_PLUS_DIGITS_R2},
+    {'3', 7, NEUBRUTALISM_PLUS_DIGITS_R3},
+    {'4', 6, NEUBRUTALISM_PLUS_DIGITS_R4},
+    {'5', 6, NEUBRUTALISM_PLUS_DIGITS_R5},
+    {'6', 7, NEUBRUTALISM_PLUS_DIGITS_R6},
+    {'7', 6, NEUBRUTALISM_PLUS_DIGITS_R7},
+    {'8', 7, NEUBRUTALISM_PLUS_DIGITS_R8},
+    {'9', 7, NEUBRUTALISM_PLUS_DIGITS_R9},
+    {':', 2, NEUBRUTALISM_PLUS_DIGITS_R10}
+  };
+
+static const size_t NEUBRUTALISM_PLUS_DIGITS_COUNT = 11;
 
 static const GPoint NEUBRUTALISM_PLUS_W144_BACKGROUND_POLY0_PTS[] = {
     {72, 9},
@@ -359,6 +518,17 @@ bool neubrutalism_plus_w200_weather_visible(const NeubrutalismPlusTheme *th, con
   return ((st->weather_enabled == true) || (st->bt == false));
 }
 
+static const NEUBRUTALISM_PLUS_DIGITS_Glyph *neubrutalism_plus_digits_glyph(char c) {
+  for (size_t i = 0; i < NEUBRUTALISM_PLUS_DIGITS_COUNT; i++) {
+    if (NEUBRUTALISM_PLUS_DIGITS_GLYPHS[i].ch == c) return &NEUBRUTALISM_PLUS_DIGITS_GLYPHS[i];
+  }
+  return NULL;
+}
+
+static int neubrutalism_plus_digits_glyph_width(const NEUBRUTALISM_PLUS_DIGITS_Glyph *g) {
+  return g ? g->w : 0;
+}
+
 void neubrutalism_plus_w200_time_draw(GContext *ctx, int16_t w, int16_t h, const NeubrutalismPlusTheme *th, const NeubrutalismPlusState *st) {
   (void)h;
   (void)th;
@@ -380,8 +550,8 @@ void neubrutalism_plus_w200_time_draw(GContext *ctx, int16_t w, int16_t h, const
   const int16_t glyph_height = 10 * pix_h;
   int16_t total_width = 0;
   for (size_t i = 0; i < text_len; i++) {
-    const DigitGlyph *glyph = glyph_for_char(text[i]);
-    total_width += glyph_width(glyph) * pix_w;
+    const NEUBRUTALISM_PLUS_DIGITS_Glyph *glyph = neubrutalism_plus_digits_glyph(text[i]);
+    total_width += neubrutalism_plus_digits_glyph_width(glyph) * pix_w;
     if (i < text_len - 1) total_width += pix_w;
   }
   const int16_t start_x = (bw - total_width) / 2;
@@ -389,8 +559,8 @@ void neubrutalism_plus_w200_time_draw(GContext *ctx, int16_t w, int16_t h, const
   graphics_context_set_fill_color(ctx, th->ink);
   int16_t cursor_x = start_x;
   for (size_t i = 0; i < text_len; i++) {
-    const DigitGlyph *glyph = glyph_for_char(text[i]);
-    const int16_t glyph_w = glyph_width(glyph);
+    const NEUBRUTALISM_PLUS_DIGITS_Glyph *glyph = neubrutalism_plus_digits_glyph(text[i]);
+    const int16_t glyph_w = neubrutalism_plus_digits_glyph_width(glyph);
     if (!glyph) continue;
     for (int16_t row = 0; row < 10; row++) {
       const char *row_data = glyph->rows[row];
@@ -547,8 +717,8 @@ void neubrutalism_plus_w144_time_draw(GContext *ctx, int16_t w, int16_t h, const
   const int16_t glyph_height = 10 * pix_h;
   int16_t total_width = 0;
   for (size_t i = 0; i < text_len; i++) {
-    const DigitGlyph *glyph = glyph_for_char(text[i]);
-    total_width += glyph_width(glyph) * pix_w;
+    const NEUBRUTALISM_PLUS_DIGITS_Glyph *glyph = neubrutalism_plus_digits_glyph(text[i]);
+    total_width += neubrutalism_plus_digits_glyph_width(glyph) * pix_w;
     if (i < text_len - 1) total_width += pix_w;
   }
   const int16_t start_x = (bw - total_width) / 2;
@@ -556,8 +726,8 @@ void neubrutalism_plus_w144_time_draw(GContext *ctx, int16_t w, int16_t h, const
   graphics_context_set_fill_color(ctx, th->ink);
   int16_t cursor_x = start_x;
   for (size_t i = 0; i < text_len; i++) {
-    const DigitGlyph *glyph = glyph_for_char(text[i]);
-    const int16_t glyph_w = glyph_width(glyph);
+    const NEUBRUTALISM_PLUS_DIGITS_Glyph *glyph = neubrutalism_plus_digits_glyph(text[i]);
+    const int16_t glyph_w = neubrutalism_plus_digits_glyph_width(glyph);
     if (!glyph) continue;
     for (int16_t row = 0; row < 10; row++) {
       const char *row_data = glyph->rows[row];

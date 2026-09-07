@@ -212,8 +212,18 @@ function drawMeterbarItem(ctx, item, w, h, consts, theme, state) {
   fillRect(ctx, fx + 2 * inset, fy + 2 * inset, barW, fh - 4 * inset, fillC);
 }
 
-function drawBitmapItem(ctx, item, w, h, consts, bitmaps) {
-  const img = (bitmaps || {})[item.id];
+function drawBarItem(ctx, item, w, h, consts, theme, state) {
+  // Dumb primitive: track rect with a plain percent-width fill. No shadow,
+  // no frame, no chrome — composition (extra rects + groups) is the user's
+  // job, not the primitive's.
+  const b = evalBox(item.box, w, h, consts);
+  fillRect(ctx, b.x, b.y, b.w, b.h, resolveFill(item.track, theme, state));
+  const pct = Math.max(0, Math.min(100, state[item.value.slice(1)] || 0));
+  const barW = Math.floor(b.w * pct / 100);
+  fillRect(ctx, b.x, b.y, barW, b.h, resolveFill(item.fill, theme, state));
+}
+
+function drawBitmapItem(ctx, item, w, h, consts, bitmaps) {  const img = (bitmaps || {})[item.id];
   if (!img || !img.width) return;
   const cx = evalDim(item.center[0], w, h, consts);
   const cy = evalDim(item.center[1], w, h, consts);
@@ -230,6 +240,7 @@ function drawGraphicsLayer(ctx, layer, w, h, consts, theme, state, bitmaps) {
     if (item.kind === 'rect') drawRectItem(ctx, item, w, h, consts, theme, state);
     else if (item.kind === 'polygon') drawPolygonItem(ctx, item, w, h, consts, theme, state);
     else if (item.kind === 'meterbar') drawMeterbarItem(ctx, item, w, h, consts, theme, state);
+    else if (item.kind === 'bar') drawBarItem(ctx, item, w, h, consts, theme, state);
     else if (item.kind === 'bitmap') drawBitmapItem(ctx, item, w, h, consts, bitmaps);
   }
 }
@@ -324,7 +335,9 @@ function drawScreen(ctx, design, screenId, opts) {
     if (layer.kind === 'graphics') {
       drawGraphicsLayer(ctx, layer, sc.w, sc.h, consts, theme, state, opts.bitmaps);
     } else if (layer.kind === 'text') {
-      drawTextLayer(ctx, layer, sc.w, sc.h, consts, theme, state, opts.fonts);
+      // Unified text: pixelFont present → pixel glyphs, else vector font.
+      if (layer.pixelFont) drawPixelLayer(ctx, layer, sc.w, sc.h, consts, theme, state, design.pixelFonts);
+      else drawTextLayer(ctx, layer, sc.w, sc.h, consts, theme, state, opts.fonts);
     } else if (layer.kind === 'pixeltext') {
       drawPixelLayer(ctx, layer, sc.w, sc.h, consts, theme, state, design.pixelFonts);
     }
@@ -334,7 +347,7 @@ function drawScreen(ctx, design, screenId, opts) {
 const PEPreview = {
   GCOLORS, FONT_CALIBRATION, evalDim, evalTest, evalCond,
   resolveColor, resolveFill, evalBox, layerVisible,
-  drawScreen, drawGraphicsLayer, drawTextLayer, drawPixelLayer,
+  drawScreen, drawGraphicsLayer, drawTextLayer, drawPixelLayer, drawBarItem,
 };
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = PEPreview;

@@ -58,3 +58,35 @@ test('palette sanity', () => {
   expect(pv.GCOLORS.Clear).toBe(null);
   expect(Object.keys(pv.GCOLORS).length).toBe(65);
 });
+
+test('drawBarItem paints track then percent fill', () => {
+  const calls = [];
+  const ctx = { fillStyle: null, fillRect(x, y, w, h) { calls.push([this.fillStyle, x, y, w, h]); } };
+  const theme = { tokens: {} };
+  const item = { kind: 'bar', box: { x: 0, y: 0, w: 100, h: 20 }, value: '$battery', fill: 'GColorBlack', track: 'GColorWhite' };
+  pv.drawBarItem(ctx, item, 200, 228, {}, theme, { battery: 40 });
+  expect(calls).toEqual([
+    ['#FFFFFF', 0, 0, 100, 20],
+    ['#000000', 0, 0, 40, 20],
+  ]);
+});
+
+test('unified text+pixelFont renders exactly like pixeltext kind', () => {
+  const mkCtx = () => {
+    const calls = [];
+    return {
+      ctx: { fillStyle: null, fillRect(x, y, w, h) { calls.push([this.fillStyle, x, y, w, h]); } },
+      calls,
+    };
+  };
+  const theme = { tokens: {} };
+  const state = { t: '1' };
+  const pixelFonts = { digits: { rows: 1, chars: { 1: ['1'] } } };
+  const base = { box: { x: 0, y: 0, w: 100, h: 20 }, pixelFont: 'digits', fill: 'GColorBlack', text: '$t', scaleDivisor: 50 };
+  const a = mkCtx();
+  pv.drawPixelLayer(a.ctx, { ...base, id: 'a', kind: 'text' }, 100, 100, {}, theme, state, pixelFonts);
+  const b = mkCtx();
+  pv.drawPixelLayer(b.ctx, { ...base, id: 'b', kind: 'pixeltext' }, 100, 100, {}, theme, state, pixelFonts);
+  expect(a.calls.length).toBeGreaterThan(0);
+  expect(a.calls).toEqual(b.calls);
+});

@@ -171,3 +171,188 @@ test('itemBounds handles all item kinds', () => {
   expect([poly.x, poly.y, poly.w, poly.h]).toEqual([60, 60, 30, 30]);
   expect(M.itemBounds(d, 'a', 1, null)).toEqual({ x: 0, y: 0, w: 100, h: 20 });
 });
+
+test('listProviders groups widget state by type with owners', () => {
+  const manifests = {
+    time: { provides: [
+      { name: 'time_str', type: 'string' },
+      { name: 'display_hour', type: 'int' },
+    ] },
+    steps: { provides: [{ name: 'steps', type: 'int' }] },
+  };
+  const out = M.listProviders(manifests, [{ var: 'bars_mode', key: 'BARS_MODE', kind: 'int' }]);
+  expect(out.string).toEqual([{ name: 'time_str', owner: 'time', widget: 'time' }]);
+  expect(out.int).toEqual([
+    { name: 'display_hour', owner: 'time', widget: 'time' },
+    { name: 'steps', owner: 'steps', widget: 'steps' },
+    { name: 'bars_mode', owner: 'setting:BARS_MODE', widget: null },
+  ]);
+  expect(out.bool).toEqual([{ name: 'bt', owner: 'core', widget: null }]);
+});
+
+test('listProviders tolerates missing manifests and settings', () => {
+  const out = M.listProviders(null, null);
+  expect(out.string).toEqual([]);
+  expect(out.bool).toEqual([{ name: 'bt', owner: 'core', widget: null }]);
+});
+
+test('bindingOf parses $refs', () => {
+  expect(M.bindingOf('$time_str')).toBe('time_str');
+  expect(M.bindingOf('time_str')).toBe(null);
+  expect(M.bindingOf('')).toBe(null);
+  expect(M.bindingOf('$')).toBe(null);
+  expect(M.bindingOf(null)).toBe(null);
+  expect(M.bindingOf(42)).toBe(null);
+});
+
+test('ensureWidget adds missing widgets once', () => {
+  const d = {};
+  expect(M.ensureWidget(d, 'time')).toBe(true);
+  expect(d.widgets).toEqual(['time']);
+  expect(M.ensureWidget(d, 'time')).toBe(false);
+  expect(d.widgets).toEqual(['time']);
+  expect(M.ensureWidget(d, null)).toBe(false);
+});
+
+test('platform registry maps every supported platform to dims and a shared screen', () => {
+  expect(M.PLATFORMS).toMatchObject({
+    aplite: { w: 144, h: 168, screen: 'w144' },
+    basalt: { w: 144, h: 168, screen: 'w144' },
+    diorite: { w: 144, h: 168, screen: 'w144' },
+    flint: { w: 144, h: 168, screen: 'w144' },
+    emery: { w: 200, h: 228, screen: 'w200' },
+  });
+});
+
+test('platformScreen resolves platform aliases and rejects unknown platforms', () => {
+  expect(M.platformScreen('basalt')).toBe('w144');
+  expect(M.platformScreen('emery')).toBe('w200');
+  expect(M.platformScreen('chalk')).toBe(null);
+});
+
+test('visiblePlatforms defaults to the design targets, filtered to known platforms', () => {
+  const d = { app: { targets: ['basalt', 'emery', 'chalk'] } };
+  expect(M.visiblePlatforms(d, null)).toEqual(['basalt', 'emery']);
+  expect(M.visiblePlatforms(d, ['emery'])).toEqual(['emery']);
+  expect(M.visiblePlatforms({}, null)).toEqual([]);
+});
+
+test('visibleSizes maps targets through platform dims', () => {
+  const d = { app: { targets: ['basalt', 'emery'] } };
+  expect(M.visibleSizes(d, null)).toEqual(['144', '200']);
+  expect(M.visibleSizes({ app: { targets: ['basalt'] } }, null)).toEqual(['144']);
+  expect(M.visibleSizes(d, ['200'])).toEqual(['200']);
+  expect(M.visibleSizes(d, ['bogus'])).toEqual(['144', '200']);
+  expect(M.visibleSizes({}, null)).toEqual(['144', '200']);
+});
+
+function blankDoc() {
+  return {
+    schema: 1, name: 'b', constants: {},
+    screens: {
+      w200: { w: 200, h: 228, layers: [{ id: 'background', kind: 'graphics', items: [] }] },
+      w144: { w: 144, h: 168, layers: [{ id: 'background', kind: 'graphics', items: [] }] },
+    },
+    themes: [{ name: 't', tokens: {} }],
+    state: [], widgets: [], fonts: [{ id: 'jersey25', resource: 'FONT_JERSEY_25' }],
+    pixelFonts: {},
+  };
+}
+
+test('addLayer creates unique ids and rejects bad kinds', () => {
+  const d = blankDoc();
+  const i = M.addLayer(d, 'w200', 'graphics', { id: 'bars' });
+  expect(d.screens.w200.layers[i].id).toBe('bars');
+  const j = M.addLayer(d, 'w200', 'graphics', { id: 'bars' });
+  expect(d.screens.w200.layers[j].id).toBe('bars_2');
+  expect(() => M.addLayer(d, 'w200', 'nope', {})).toThrow();
+});
+
+test('addItem appends brutalist defaults inside graphics layers', () => {
+  const d = blankDoc();
+  const li = M.addLayer(d, 'w200', 'graphics', { id: 'bars' });
+  const ii = M.addItem(d, 'w200', li, 'meterbar', 22, 140);
+  expect(d.screens.w200.layers[li].items[ii].value).toBe('$battery');
+  expect(() => M.addItem(d, 'w200', 99, 'rect', 0, 0)).toThrow();
+});
+
+test('mirrorItemToSibling scales 200px box to 144px', () => {
+  const d = blankDoc();
+  const li = M.addLayer(d, 'w200', 'graphics', { id: 'bars' });
+  M.addItem(d, 'w200', li, 'rect', 20, 20);
+  M.mirrorItemToSibling(d, 'w200', li, 0);
+  const sib = d.screens.w144.layers.find(l => l.id === 'bars');
+  expect(sib).toBeTruthy();
+  // 20*0.72=14.4->14, 20*0.7368->15; 40*0.72=28.8->29
+  expect(sib.items[0].box).toMatchObject({ x: 14, y: 15, w: 29 });
+});
+
+test('collectRefs finds text, value, and condition vars', () => {
+  const d = blankDoc();
+  M.addLayer(d, 'w200', 'text', { id: 'date', text: '$date_str' });
+  const li = M.addLayer(d, 'w200', 'graphics', { id: 'bars' });
+  M.addItem(d, 'w200', li, 'meterbar', 0, 0);
+  d.screens.w200.layers[li].items[0].visibleWhen = { var: 'bars_mode', op: 'eq', value: 0 };
+  const refs = M.collectRefs(d);
+  expect(refs.bindings).toContain('date_str');
+  expect(refs.bindings).toContain('battery');
+  expect(refs.all).toContain('bars_mode');
+});
+
+test('pruneUnusedWidgets drops unused widget and orphan state', () => {
+  const d = blankDoc();
+  d.widgets = ['battery', 'weather'];
+  d.state = [{ name: 'battery', type: 'int' }, { name: 'weather_str', type: 'string' }];
+  const manifests = {
+    battery: { provides: [{ name: 'battery', type: 'int' }] },
+    weather: { provides: [{ name: 'weather_str', type: 'string' }] },
+  };
+  const li = M.addLayer(d, 'w200', 'graphics', { id: 'bars' });
+  M.addItem(d, 'w200', li, 'meterbar', 0, 0);
+  const removed = M.pruneUnusedWidgets(d, manifests);
+  expect(d.widgets).toEqual(['battery']);
+  expect(removed.widgets).toEqual(['weather']);
+  expect(d.state.map(s => s.name)).toEqual(['battery']);
+});
+
+test('addItem supports the plain bar primitive', () => {
+  const d = blankDoc();
+  const li = M.addLayer(d, 'w200', 'graphics', { id: 'mymeters' });
+  const ii = M.addItem(d, 'w200', li, 'bar', 10, 10);
+  const item = d.screens.w200.layers[li].items[ii];
+  expect(item).toMatchObject({ kind: 'bar', value: '$battery' });
+  expect(M.itemBounds(d, 'w200', li, ii)).toMatchObject({ x: 10, y: 10, w: 100, h: 20 });
+});
+
+test('groups: create, lock skips hitTest, move moves all members', () => {
+  const d = blankDoc();
+  const li = M.addLayer(d, 'w200', 'graphics', { id: 'mymeters' });
+  M.addItem(d, 'w200', li, 'bar', 10, 10);
+  M.addItem(d, 'w200', li, 'rect', 8, 8);
+  const gid = M.createGroup(d, 'w200', 'battery progress bar', [
+    { layer: 'mymeters', item: 0 },
+    { layer: 'mymeters', item: 1 },
+  ]);
+  expect(gid).toBe('battery_progress_bar');
+  expect(M.groupContaining(d, 'w200', li, 0).id).toBe(gid);
+  // Locked: neither member hit-tests.
+  M.setGroupLock(d, 'w200', gid, true);
+  expect(M.hitTest(d, 'w200', 15, 15)).toBe(null);
+  // Unlocked: move shifts both members.
+  M.setGroupLock(d, 'w200', gid, false);
+  expect(M.moveGroup(d, 'w200', gid, 5, 0)).toBe(true);
+  expect(d.screens.w200.layers[li].items[0].box.x).toBe(15);
+  expect(d.screens.w200.layers[li].items[1].box.x).toBe(13);
+  expect(M.deleteGroup(d, 'w200', gid)).toBe(true);
+  expect(M.groupContaining(d, 'w200', li, 0)).toBe(null);
+});
+
+test('groups reject overlapping members and mirror to sibling', () => {
+  const d = blankDoc();
+  const li = M.addLayer(d, 'w200', 'graphics', { id: 'mymeters' });
+  M.addItem(d, 'w200', li, 'bar', 10, 10);
+  M.createGroup(d, 'w200', 'g1', [{ layer: 'mymeters', item: 0 }]);
+  expect(() => M.createGroup(d, 'w200', 'g2', [{ layer: 'mymeters', item: 0 }])).toThrow();
+  expect(M.mirrorGroupToSibling(d, 'w200', 'g1')).toBe(true);
+  expect(d.screens.w144.groups.map(g => g.id)).toContain('g1');
+});

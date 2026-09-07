@@ -45,35 +45,18 @@
       "watchface": true
     },
     "messageKeys": [
-      "TIME_FORMAT",
       "SETTINGS_REQUEST",
       "COLOR_THEME",
+      "TIME_FORMAT",
       "DAILY_STEP_GOAL",
-      "BARS_MODE",
-      "WEATHER_ENABLED",
       "WEATHER_TEMP",
+      "WEATHER_CODE",
       "WEATHER_UNITS",
-      "WEATHER_CODE"
+      "WEATHER_ENABLED",
+      "BARS_MODE"
     ],
     "resources": {
       "media": [
-        {
-          "type": "png",
-          "name": "IMAGE_BT_DISCONNECT",
-          "file": "images/bt_disconnect.png"
-        },
-        {
-          "type": "font",
-          "name": "FONT_JERSEY_50",
-          "file": "fonts/Jersey10-Regular.ttf",
-          "size": 50
-        },
-        {
-          "type": "font",
-          "name": "FONT_JERSEY_40",
-          "file": "fonts/Jersey10-Regular.ttf",
-          "size": 40
-        },
         {
           "type": "font",
           "name": "FONT_JERSEY_38",
@@ -85,6 +68,11 @@
           "name": "FONT_JERSEY_25",
           "file": "fonts/Jersey10-Regular.ttf",
           "size": 25
+        },
+        {
+          "type": "png",
+          "name": "IMAGE_BT_DISCONNECT",
+          "file": "images/bt_disconnect.png"
         }
       ]
     }

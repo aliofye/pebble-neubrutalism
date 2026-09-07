@@ -4,3 +4,9 @@ build/
 .lock-waf_*
 coverage/
 .pebble-home/
+.worktrees/
+# Throwaway output of tools/pebble-editor/replay-neubrutalism.js (parity proof)
+tools/pebble-editor/examples/neubrutalism-replay.design.json
+# Built React editor shell (tools/pebble-editor/ui; rebuild with npm run build there)
+tools/pebble-editor/app-dist/
+tools/pebble-editor/ui/src/gen/

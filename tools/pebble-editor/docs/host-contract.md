@@ -1,13 +1,14 @@
 # Host contract
 
-Generated code reads state; it never produces it. Any watchface that adopts
-`design.json` codegen must implement this contract on the hand-written side.
-The validator only checks that names line up — wiring them to live data is
-the host's job.
+Generated code reads state; it never produces it. State comes from exactly
+one of three places, and the validator enforces it: a widget `provides`
+entry (live data: time, date, battery, steps, weather), a design `settings`
+entry (persisted Clay options), or the generated app core (`bt` only).
+There is no fourth place — faces add no hand-written state.
 
 ## State variables (`state[]`)
 
-Every entry is a value the host owns and keeps current:
+Every entry names its provider (widget, setting, or core):
 
 | type     | C mapping              | example                              |
 |----------|------------------------|--------------------------------------|
@@ -24,8 +25,9 @@ Rules for hosts:
    bluetooth, health, AppMessage) and mark the affected generated layers
    dirty. Generated draw code is pure: same state + theme ⇒ same pixels.
 3. Derived display values (12/24h-adjusted hour, formatted strings,
-   uppercase date) are computed host-side and exposed as state. The schema
-   has no date/time formatting primitives on purpose.
+   uppercase date) are computed inside the owning widget (`time`, `date`)
+   and exposed as state. The schema has no date/time formatting primitives
+   on purpose; faces never format clocks themselves.
 4. `meterbar.value` variables must stay in 0–100. Clamp host-side.
 
 ## Layers

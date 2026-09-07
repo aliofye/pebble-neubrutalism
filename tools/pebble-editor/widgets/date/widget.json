@@ -1,0 +1,32 @@
+{
+  "name": "date",
+  "version": 1,
+  "desc": "Date-line state. Formats date_str (uppercase MON DD) from the shared minute tick, sets the date TextLayer solely on change. No settings, no timers, no phone traffic.",
+  "provides": [
+    {
+      "name": "date_str",
+      "type": "string",
+      "desc": "formatted date, e.g. SEP 05",
+      "getter": "date_widget_text"
+    }
+  ],
+  "requires": {
+    "services": [
+      "tick"
+    ],
+    "layers": [
+      "date"
+    ]
+  },
+  "persist": {},
+  "inbox": [],
+  "sync": [],
+  "clay": [],
+  "js": null,
+  "cost": {
+    "wakeups": "none beyond the shared minute tick (no separate subscription)",
+    "redraws": "date text set solely when the formatted date changes",
+    "persist": "none",
+    "notes": "Font, color, box, and visibility stay in the design's text layer; the widget only feeds state."
+  }
+}

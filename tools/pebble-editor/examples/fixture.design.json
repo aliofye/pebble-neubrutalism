@@ -1,6 +1,11 @@
 {
   "schema": 1,
   "name": "fixture",
+  "widgets": [
+    "time",
+    "date",
+    "battery"
+  ],
   "constants": {
     "pad": 8
   },
@@ -45,6 +50,25 @@
               }
             },
             {
+              "kind": "bitmap",
+              "id": "bt",
+              "center": [
+                122,
+                20
+              ],
+              "visibleWhen": {
+                "var": "bt",
+                "op": "eq",
+                "value": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "bars",
+          "kind": "graphics",
+          "items": [
+            {
               "kind": "meterbar",
               "box": {
                 "x": 16,
@@ -66,19 +90,6 @@
                 "maxH": 30,
                 "stroke": 2,
                 "inset": 2
-              }
-            },
-            {
-              "kind": "bitmap",
-              "id": "bt",
-              "center": [
-                122,
-                20
-              ],
-              "visibleWhen": {
-                "var": "bt",
-                "op": "eq",
-                "value": false
               }
             }
           ]

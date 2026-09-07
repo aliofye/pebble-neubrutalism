@@ -1,22 +1,14 @@
 [
   {
-    "type": "heading",
-    "defaultValue": "Neubrutalism+",
-    "size": 1
-  },
-  {
     "type": "section",
     "items": [
       {
         "type": "heading",
-        "defaultValue": "Time Display"
+        "defaultValue": "Neubrutalism+"
       },
       {
-        "type": "toggle",
-        "messageKey": "TIME_FORMAT",
-        "label": "24-Hour Time",
-        "description": "Turn off to use the 12-hour time format",
-        "defaultValue": true
+        "type": "heading",
+        "defaultValue": "Display"
       },
       {
         "type": "select",
@@ -24,13 +16,56 @@
         "label": "Color Theme",
         "defaultValue": 0,
         "options": [
-          { "label": "Neubrutalism", "value": 0 },
-          { "label": "Game Boy Green", "value": 1 },
-          { "label": "Ocean Blue", "value": 2 },
-          { "label": "Amber LCD", "value": 3 },
-          { "label": "Monochrome", "value": 4 },
-          { "label": "Purple Pixel", "value": 5 }
+          {
+            "label": "neubrutalism",
+            "value": 0
+          },
+          {
+            "label": "game_boy_green",
+            "value": 1
+          },
+          {
+            "label": "ocean_blue",
+            "value": 2
+          },
+          {
+            "label": "amber_lcd",
+            "value": 3
+          },
+          {
+            "label": "monochrome",
+            "value": 4
+          },
+          {
+            "label": "purple_pixel",
+            "value": 5
+          }
         ]
+      },
+      {
+        "type": "heading",
+        "defaultValue": "Time"
+      },
+      {
+        "type": "toggle",
+        "messageKey": "TIME_FORMAT",
+        "label": "24-Hour Time",
+        "description": "Turn off to use the 12-hour time format.",
+        "defaultValue": true
+      },
+      {
+        "type": "heading",
+        "defaultValue": "Steps"
+      },
+      {
+        "type": "slider",
+        "messageKey": "DAILY_STEP_GOAL",
+        "label": "Daily Step Goal",
+        "description": "Progress bar fills as you approach this many steps.",
+        "min": 1000,
+        "max": 100000,
+        "step": 1000,
+        "defaultValue": 10000
       },
       {
         "type": "heading",
@@ -50,45 +85,40 @@
         "description": "Choose how the weather bubble displays temperature.",
         "defaultValue": 0,
         "options": [
-          { "label": "Fahrenheit (°F)", "value": 0 },
-          { "label": "Celsius (°C)", "value": 1 }
+          {
+            "label": "Fahrenheit",
+            "value": 0
+          },
+          {
+            "label": "Celsius",
+            "value": 1
+          }
         ]
       },
       {
         "type": "heading",
-        "defaultValue": "Progress Bars"
+        "defaultValue": "Face Options"
       },
       {
         "type": "select",
         "messageKey": "BARS_MODE",
-        "label": "Show",
-        "description": "Choose which progress bars to display.",
+        "label": "Metric Bars",
         "defaultValue": 0,
         "options": [
-          { "label": "Battery & Steps", "value": 0 },
-          { "label": "Battery Only", "value": 1 },
-          { "label": "Steps Only", "value": 2 }
+          {
+            "label": "Battery + Steps",
+            "value": 0
+          },
+          {
+            "label": "Battery Only",
+            "value": 1
+          },
+          {
+            "label": "Steps Only",
+            "value": 2
+          }
         ]
-      },
-      {
-        "type": "input",
-        "messageKey": "DAILY_STEP_GOAL",
-        "label": "Daily Step Target",
-        "description": "Enter a target between 1,000 and 100,000 steps.",
-        "defaultValue": "10000",
-        "attributes": {
-          "type": "number",
-          "min": 1000,
-          "max": 100000,
-          "step": 500,
-          "inputmode": "numeric",
-          "required": true
-        }
       }
     ]
-  },
-  {
-    "type": "submit",
-    "defaultValue": "Save"
   }
 ]

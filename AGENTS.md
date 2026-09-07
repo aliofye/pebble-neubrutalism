@@ -10,21 +10,21 @@ thick black borders, offset hard shadows, flat saturated color blocks, pixel typ
 ## Watchface Design Notes
 
 - Background: `GColorPastelYellow` window fill (theme-dependent, see themes).
-- Core orange block: rect from `orange_rect()` in `layout.c` (`x=w/10, y=h/5,
-  w=8w/10, h=h/3`) with outer black border (`ORANGE_STROKE = 3`) and a hard
-  black shadow offset by `w/30` down-right.
+- Core orange block: rect from `orange_rect()` in the design
+  (`x=w/10, y=h/5, w=8w/10, h=h/3`) with outer black border
+  (`ORANGE_STROKE = 3`) and a hard black shadow offset by `w/30` down-right.
 - Date/weather tabs: white-filled (date) and condition-colored (weather)
-  `GPath` polygons with axis-aligned black outlines (`prv_draw_axis_aligned_outline`,
-  stroke 4 on both sizes). Points: `s_polygon_info_200` / `s_polygon_info_144`
-  (+ `_weather` mirrors) in `neubrutalism.c`.
-- Time: custom pixel glyphs (`glyphs.c`, string bitmaps) rendered in ink inside
-  the orange block. Pixel scale `pix = screen_w / 40` (5 on 200px, 3 on 144px);
-  hours 20–23 in 24h mode on 200px use `pix_h = 4` so the time fits.
+  `GPath` polygons with axis-aligned black outlines, stroke 4 on both sizes.
+- Time: custom pixel glyphs (string bitmaps in the design's `pixelFonts`)
+  rendered in ink inside the orange block. Pixel scale `pix = screen_w / 40`
+  (5 on 200px, 3 on 144px); hours 20–23 in 24h mode on 200px use `pix_h = 4`
+  so the time fits.
 - Date/weather text: Jersey10 font (`FONT_JERSEY_38` on 200px, `FONT_JERSEY_25`
   on 144px), vertically centered in their layer boxes. Date in theme ink,
   weather always black. Weather bubble fill follows the WMO code
-  (`prv_weather_bubble_color`); hidden unless weather is enabled or BT is down.
-- Metric bars (`prv_draw_metric_bar`): black shadow strip, ink outline box,
+  (conditional fill cases in the design); hidden unless weather is enabled
+  or BT is down.
+- Metric bars: black shadow strip, ink outline box,
   pastel frame, black core, colored fill. Three modes (`BARS_BOTH` stacked,
   `BARS_BATTERY_ONLY`, `BARS_STEPS_ONLY`); positions derive from `timeBottom`
   (bottom of the time-box shadow), vertically centered in the remaining space.
@@ -59,8 +59,9 @@ pebble install --emulator basalt
 # Screenshot the running emulator (no --scale flag in this SDK)
 pebble screenshot --emulator basalt --no-correction --no-open shot-basalt.png
 
-# JS unit tests (host-side logic: layout, time formatting)
+# JS unit tests (host-side logic: layout, time formatting) + C widget tests
 npm test
+./scripts/test-c.sh
 ```
 
 If you need more information on the `pebble` command or a sub-command, append `--help`.
@@ -68,9 +69,12 @@ If you need more information on the `pebble` command or a sub-command, append `-
 ## Project Structure
 
 ```
-src/c/           - C sources: neubrutalism.c (watchface), glyphs.c/h (pixel
-                   digits), layout.c/h (orange_rect), time_util.c/h (formatting)
-src/pkjs/        - Clay settings page: config.json, index.js, custom-clay.js
+src/c/           - GENERATED app core (DO NOT EDIT, DO NOT ADD FILES): main.c,
+                   generated_design.c/h, pe_layers.h, widgets/ (time, date,
+                   battery, steps, weather + shared time_util) — all produced
+                   from tools/pebble-editor/examples/neubrutalism-plus.design.json
+src/pkjs/        - GENERATED Clay page (DO NOT EDIT): config.json, index.js,
+                   widget_weather.js; custom-clay.js template copy
 resources/       - fonts/Jersey10-Regular.ttf, images/bt_disconnect.png
 design-sandbox/  - UNCOMMITTED throwaway visual sandbox (single HTML file).
                    Superseded by the editor below; kept for quick throwaway
@@ -85,33 +89,45 @@ tools/pebble-editor/ - Visual editor + one-way C codegen (schema, validator,
 
 Watchface (`"watchface": true` in package.json). Settings sync via AppMessage
 `messageKeys` (time format, theme, step goal, bars mode, weather) driven by the
-Clay page in `src/pkjs/`. `DEBUG_COLOR_CYCLE` in `neubrutalism.c` (default 0)
-cycles weather/battery colors every 2s for visual development; never ship with
-it on.
+generated Clay page in `src/pkjs/`. There is no hand-written face code left:
+every behavior lives in a widget module under `tools/pebble-editor/widgets/`
+(time, date, battery, steps, weather) or the generated core. The old
+`DEBUG_COLOR_CYCLE` dev hook is gone with `neubrutalism.c`.
 
 ## Architecture
 
-1. **Main entry**: `main()` in `neubrutalism.c` — init, service subscriptions,
-   event loop. No button handling (watchface).
-2. **Layers** (bottom to top): `s_background_layer` (static chrome: time box,
-   tabs, weather bubble, BT icon — redrawn only on theme/weather/BT change),
-   `s_bars_layer` (metric bars — redrawn on battery/step/theme/mode change),
-   date + weather `TextLayer`s, `s_time_layer` (pixel glyphs — the only layer
-   redrawn every minute). All three graphics layers are full-screen frames;
-   drawing is done by **generated code** (see below), which uses absolute
+1. **Source of truth**: `tools/pebble-editor/examples/neubrutalism-plus.design.json`
+   + `neubrutalism-plus.resources.json`. Everything under `src/c/` and the
+   Clay trio (`src/pkjs/index.js`, `config.json`, `widget_weather.js`) is
+   generated — never edited, never extended by hand.
+2. **Layers** (bottom to top): background (static chrome: time box, tabs,
+   weather bubble, BT icon — redrawn only on theme/weather/BT change), bars
+   (metric bars — redrawn on battery/step/theme/mode change), date + weather
+   `TextLayer`s, time (pixel glyphs — the only layer redrawn every minute).
+   All three graphics layers are full-screen frames drawn with absolute
    screen coordinates.
-3. **Generated visuals**: `src/c/generated_design.c/h` (DO NOT EDIT) is
-   produced from `tools/pebble-editor/examples/neubrutalism-plus.design.json`
-   by `node tools/pebble-editor/generate.js`. It owns: theme tables, polygon
-   data, all layer draw functions, text frames/fonts/colors, visibility
-   rules. `neubrutalism.c` keeps services, state, settings, and layer/text
-   lifecycle, and feeds a state struct to the generated draw calls. To change
-   anything visual, edit the design (visually in the editor, or the JSON),
-   regenerate, rebuild. Never hand-edit the generated files.
-3. **Services**: minute tick, battery, bluetooth, health (step count, `PBL_HEALTH`
-   only), AppMessage inbox for Clay settings with persist round-trip.
-4. **Shared/host logic**: `layout.c` and `time_util.c` compile both on-watch
-   and on-host (for jest tests).
+3. **Codegen** (two steps, both required):
+   - visuals: `node tools/pebble-editor/generate.js <design> --out-dir src/c`
+     → `generated_design.c/h` (theme tables, polygon data + create/destroy
+     lifecycle, draw functions, text frames/fonts/colors, visibility rules).
+     The generated `main.c` calls each screen's `*_polygons_create()` on
+     window load and `*_polygons_destroy()` on unload — without them polygon
+     fills silently vanish (outlines still draw; proven by the migration
+     parity gate).
+   - full app: `node tools/pebble-editor/generate-app.js <design> --out-dir .`
+     writes `src/c/main.c`, `src/c/pe_layers.h`, `src/c/widgets/`,
+     `src/pkjs/*`, and the `pebble.messageKeys`/`resources` sections of
+     `package.json` (order matters; keep the generated order).
+   To change anything — visual or behavioral — edit the design or a widget
+   module, regenerate both, rebuild. Never hand-edit the generated files.
+4. **Services** (all owned by widgets/core, none by face code): minute tick
+   (shared; time/date/steps poll it), battery events, bluetooth, health step
+   count (`PBL_HEALTH` only), AppMessage inbox for Clay settings with
+   persist round-trip (persist keys are part of the widget manifests and the
+   design's `settings`; never reuse a number).
+5. **Shared/host logic**: `tools/pebble-editor/templates/time_util.c`
+   (formatting) compiles on-watch (copied into `src/c/widgets/`) and
+   on-host (widget unit tests via `scripts/test-c.sh`).
 
 ## SDK Documentation
 
@@ -149,7 +165,8 @@ Key Entry Points:
      (mask the time digits — minutes elapse between shots). Any other
      difference means schema/codegen/preview drift: fix the tooling, not
      the generated files.
-- `src/c/generated_design.c/h` is build output. Regenerate; never edit.
+- `src/c/` and the Clay trio are build output. Regenerate (both steps);
+  never edit, never add files there.
 - Run the full loop (edit → save → generate → build → screenshot-diff) for
   every visual change, and `npm test` for good measure.
 

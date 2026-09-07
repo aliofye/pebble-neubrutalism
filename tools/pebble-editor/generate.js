@@ -199,6 +199,22 @@ class Emitter {
     return s;
   }
 
+  emitBar(item) {
+    this.usedBar = true;
+    const [x, y, w, h] = this.boxArgs(item.box);
+    let s = '  ' + this.p + '_bar(ctx, ' + [
+      x, y, w, h,
+      this.fillExpr(item.track),
+      this.fillExpr(item.fill),
+      'st->' + item.value.slice(1),
+    ].join(', ') + ');\n';
+    if (item.visibleWhen) {
+      s = '  if (' + this.cond(item.visibleWhen) + ') {\n' +
+        s.split('\n').map(l => l ? '  ' + l : l).join('\n') + '  }\n';
+    }
+    return s;
+  }
+
   emitBitmap(item) {
     let s = '';
     if (item.visibleWhen) s += '  if (' + this.cond(item.visibleWhen) + ') {\n';
@@ -237,6 +253,7 @@ class Emitter {
       if (item.kind === 'rect') body += this.emitRect(item);
       else if (item.kind === 'polygon') body += this.emitPolygon(item, screen, layer.id, polyIdx++);
       else if (item.kind === 'meterbar') body += this.emitMeterbar(item);
+      else if (item.kind === 'bar') body += this.emitBar(item);
       else if (item.kind === 'bitmap') body += this.emitBitmap(item);
     }
     const params = this.drawParams(layer);
@@ -289,6 +306,44 @@ class Emitter {
     const p = this.p, th = this.camel + 'Theme', st = this.camel + 'State';
     const fname = p + '_' + screen + '_' + layer.id + '_draw';
     const [bx, by, bw, bh] = this.boxArgs(layer.box);
+    // Glyph tables are emitted from design.json: self-contained, no host
+    // glyph module needed. Row count is baked per font.
+    const glyphs = this.doc.pixelFonts[layer.pixelFont];
+    const grows = glyphs.rows;
+    if (!this.emittedGlyphFonts) this.emittedGlyphFonts = new Set();
+    const gtype = this.up + '_' + ident(layer.pixelFont) + '_Glyph';
+    const gbase = this.up + '_' + ident(layer.pixelFont);
+    if (!this.emittedGlyphFonts.has(layer.pixelFont)) {
+      this.emittedGlyphFonts.add(layer.pixelFont);
+      const entries = Object.entries(glyphs.chars);
+      entries.forEach(([ch, rows], i) => {
+        if (ch.length !== 1 || ch === "'" || ch === '\\') {
+          throw new Error('unsupported glyph char ' + JSON.stringify(ch));
+        }
+        this.statics.push('static const char * const ' + gbase + '_R' + i + '[] = {\n' +
+          rows.map(r => '    "' + r + '"').join(',\n') + '\n  };');
+      });
+      this.statics.push('typedef struct { char ch; uint8_t w; const char * const *rows; } ' + gtype + ';');
+      this.statics.push('static const ' + gtype + ' ' + gbase + '_GLYPHS[] = {\n' +
+        entries.map(([ch, rows], i) => '    {\'' + ch + '\', ' + rows[0].length + ', ' + gbase + '_R' + i + '}').join(',\n') +
+        '\n  };');
+      this.statics.push('static const size_t ' + gbase + '_COUNT = ' + entries.length + ';');
+    }
+    const gfn = p + '_' + layer.pixelFont + '_glyph';
+    const gwfn = p + '_' + layer.pixelFont + '_glyph_width';
+    if (!this.emittedGlyphFns) this.emittedGlyphFns = new Set();
+    if (!this.emittedGlyphFns.has(layer.pixelFont)) {
+      this.emittedGlyphFns.add(layer.pixelFont);
+      this.functions.push(
+        'static const ' + gtype + ' *' + gfn + '(char c) {\n' +
+        '  for (size_t i = 0; i < ' + gbase + '_COUNT; i++) {\n' +
+        '    if (' + gbase + '_GLYPHS[i].ch == c) return &' + gbase + '_GLYPHS[i];\n' +
+        '  }\n' +
+        '  return NULL;\n}\n');
+      this.functions.push(
+        'static int ' + gwfn + '(const ' + gtype + ' *g) {\n' +
+        '  return g ? g->w : 0;\n}\n');
+    }
     let body = '  (void)h;\n  (void)th;\n  (void)st;\n';
     if (layer.note) body += '  /* ' + layer.note + ' */\n';
     body += '  int16_t bx = ' + bx + ';\n';
@@ -307,11 +362,11 @@ class Emitter {
     }
     body += '  if (pix_w < 1) pix_w = 1;\n';
     body += '  if (pix_h < 1) pix_h = 1;\n';
-    body += '  const int16_t glyph_height = 10 * pix_h;\n';
+    body += '  const int16_t glyph_height = ' + grows + ' * pix_h;\n';
     body += '  int16_t total_width = 0;\n';
     body += '  for (size_t i = 0; i < text_len; i++) {\n';
-    body += '    const DigitGlyph *glyph = glyph_for_char(text[i]);\n';
-    body += '    total_width += glyph_width(glyph) * pix_w;\n';
+    body += '    const ' + gtype + ' *glyph = ' + gfn + '(text[i]);\n';
+    body += '    total_width += ' + gwfn + '(glyph) * pix_w;\n';
     body += '    if (i < text_len - 1) total_width += pix_w;\n';
     body += '  }\n';
     body += '  const int16_t start_x = (bw - total_width) / 2;\n';
@@ -319,10 +374,10 @@ class Emitter {
     body += '  graphics_context_set_fill_color(ctx, ' + this.fillExpr(layer.fill) + ');\n';
     body += '  int16_t cursor_x = start_x;\n';
     body += '  for (size_t i = 0; i < text_len; i++) {\n';
-    body += '    const DigitGlyph *glyph = glyph_for_char(text[i]);\n';
-    body += '    const int16_t glyph_w = glyph_width(glyph);\n';
+    body += '    const ' + gtype + ' *glyph = ' + gfn + '(text[i]);\n';
+    body += '    const int16_t glyph_w = ' + gwfn + '(glyph);\n';
     body += '    if (!glyph) continue;\n';
-    body += '    for (int16_t row = 0; row < 10; row++) {\n';
+    body += '    for (int16_t row = 0; row < ' + grows + '; row++) {\n';
     body += '      const char *row_data = glyph->rows[row];\n';
     body += '      for (int16_t col = 0; col < glyph_w; col++) {\n';
     body += '        if (row_data[col] == \'1\') {\n';
@@ -362,8 +417,7 @@ class Emitter {
       s += '}\n\n';
     }
     if (this.usedMeterbar) {
-      s += 'static void ' + p + '_meterbar(GContext *ctx, int16_t x, int16_t y, int16_t w, int16_t h,\n';
-      s += '    int16_t stroke, int16_t shdx, int16_t shdy, GColor ink_c, GColor frame_c, GColor core_c,\n';
+      s += 'static void ' + p + '_meterbar(GContext *ctx, int16_t x, int16_t y, int16_t w, int16_t h,\n';      s += '    int16_t stroke, int16_t shdx, int16_t shdy, GColor ink_c, GColor frame_c, GColor core_c,\n';
       s += '    GColor fill_c, int percent, int16_t inset, int16_t cmaxh, int16_t cstroke, int16_t cinset) {\n';
       s += '  GRect strip = GRect(x + shdx, y + shdy, w + shdx, h);\n';
       s += '  graphics_context_set_fill_color(ctx, ink_c);\n';
@@ -387,6 +441,17 @@ class Emitter {
       s += '  graphics_fill_rect(ctx, bar, 0, GCornerNone);\n';
       s += '}\n\n';
     }
+    if (this.usedBar) {
+      s += 'static void ' + p + '_bar(GContext *ctx, int16_t x, int16_t y, int16_t w, int16_t h,\n';
+      s += '    GColor track_c, GColor fill_c, int percent) {\n';
+      s += '  if (percent < 0) percent = 0;\n';
+      s += '  if (percent > 100) percent = 100;\n';
+      s += '  graphics_context_set_fill_color(ctx, track_c);\n';
+      s += '  graphics_fill_rect(ctx, GRect(x, y, w, h), 0, GCornerNone);\n';
+      s += '  graphics_context_set_fill_color(ctx, fill_c);\n';
+      s += '  graphics_fill_rect(ctx, GRect(x, y, (int16_t)((w * percent) / 100), h), 0, GCornerNone);\n';
+      s += '}\n\n';
+    }
     return s;
   }
 
@@ -400,7 +465,12 @@ class Emitter {
     for (const [screen, sc] of Object.entries(doc.screens)) {
       for (const layer of sc.layers) {
         if (layer.kind === 'graphics') this.emitGraphicsLayer(screen, layer);
-        else if (layer.kind === 'text') this.emitTextLayer(screen, layer);
+        else if (layer.kind === 'text') {
+          // Unified text: pixelFont present → pixel glyphs, else vector font.
+          // kind pixeltext (deprecated) always takes the pixel path.
+          if (layer.pixelFont) this.emitPixelLayer(screen, layer);
+          else this.emitTextLayer(screen, layer);
+        }
         else if (layer.kind === 'pixeltext') this.emitPixelLayer(screen, layer);
       }
     }
@@ -449,7 +519,7 @@ class Emitter {
     h += '\n';
 
     let c = '/* DO NOT EDIT - generated from ' + sourceName + ' by tools/pebble-editor/generate.js */\n';
-    c += '#include "generated_design.h"\n\n#include <string.h>\n\n#include "glyphs.h"\n\n';
+    c += '#include "generated_design.h"\n\n#include <string.h>\n\n';
     c += 'const ' + camel + 'Theme ' + up + '_THEMES[' + doc.themes.length + '] = {\n';
     for (const t of doc.themes) {
       c += '  { /* ' + t.name + ' */\n';

@@ -12,6 +12,7 @@
   const S = {
     design: null,
     facePath: null,
+    manifests: {},
     resMap: {},
     themeIdx: 0,
     state: {},
@@ -25,7 +26,12 @@
     fonts: {},
     bitmaps: {},
     vertexMode: {},
+    tool: null,
   };
+
+  function isReferenceFace() {
+    return !!S.facePath && S.facePath.indexOf('neubrutalism-plus') !== -1;
+  }
 
   function status(msg) {
     $('status').textContent = msg;
@@ -66,6 +72,12 @@
 
   async function loadFace(facePath) {
     const data = await api('/api/design?path=' + encodeURIComponent(facePath));
+    try {
+      S.manifests = (await api('/api/widgets')).widgets || {};
+    } catch (e) {
+      S.manifests = {};
+      status('widget registry unavailable: ' + e.message);
+    }
     S.design = data.design;
     S.facePath = facePath;
     S.themeIdx = 0;
@@ -77,6 +89,7 @@
     S.undo = [];
     S.redo = [];
     initState();
+    renderPlatformToggles();
     buildCanvases();
     renderAll();
     renderPanels();
@@ -162,44 +175,112 @@
     }
   }
 
-  function buildCanvases() {
-    const stage = $('stage');
-    stage.innerHTML = '';
-    for (const [screenId, sc] of Object.entries(S.design.screens)) {
-      const wrap = document.createElement('div');
-      wrap.className = 'screen';
-      const title = document.createElement('h2');
-      title.textContent = screenId + ' — ' + sc.w + '×' + sc.h;
-      const cv = document.createElement('canvas');
-      cv.width = sc.w;
-      cv.height = sc.h;
-      cv.dataset.screen = screenId;
-      cv.style.width = (sc.w * S.zoom) + 'px';
-      wrap.appendChild(title);
-      wrap.appendChild(cv);
-      stage.appendChild(wrap);
-      attachCanvas(cv, screenId);
+  function sizesKey() {
+    return 'pe-sizes:' + (S.facePath || 'default');
+  }
+
+  function selectedSizes() {
+    let saved = null;
+    try {
+      saved = JSON.parse(localStorage.getItem(sizesKey()));
+    } catch (e) { saved = null; }
+    return MODEL.visibleSizes(S.design, saved);
+  }
+
+  function renderPlatformToggles() {
+    const el = $('platforms');
+    el.innerHTML = '';
+    if (!S.design) return;
+    const sel = selectedSizes();
+    for (const size of ['144', '200']) {
+      const label = document.createElement('label');
+      label.className = 'inline';
+      label.title = size === '144'
+        ? '144×168 watches (color + black-and-white previews)'
+        : '200×228 watches';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = sel.includes(size);
+      cb.onchange = () => {
+        const next = ['144', '200'].filter(s =>
+          s === size ? cb.checked : selectedSizes().includes(s));
+        if (!next.length) {
+          status('at least one size stays on');
+          cb.checked = true;
+          return;
+        }
+        try {
+          localStorage.setItem(sizesKey(), JSON.stringify(next));
+        } catch (e) { /* private mode: selection just won't persist */ }
+        buildCanvases();
+        renderAll();
+      };
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(' ' + size));
+      el.appendChild(label);
     }
   }
 
-  function canvasFor(screenId) {
-    return document.querySelector('canvas[data-screen="' + screenId + '"]');
+  function addCanvas(stage, screenId, title, bw) {
+    const sc = S.design.screens[screenId];
+    if (!sc) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'screen';
+    const h = document.createElement('h2');
+    h.textContent = title;
+    const cv = document.createElement('canvas');
+    cv.width = sc.w;
+    cv.height = sc.h;
+    cv.dataset.screen = screenId;
+    if (bw) cv.className = 'bw';
+    cv.style.width = (sc.w * S.zoom) + 'px';
+    wrap.appendChild(h);
+    wrap.appendChild(cv);
+    stage.appendChild(wrap);
+    attachCanvas(cv, screenId);
+  }
+
+  function screenForSize(w) {
+    // Screens match by width, never by key name: any design key works.
+    // (Heights ride along with the matched screen definition.)
+    for (const [sid, sc] of Object.entries(S.design.screens)) {
+      if (sc.w === w) return sid;
+    }
+    return null;
+  }
+
+  function buildCanvases() {
+    const stage = $('stage');
+    stage.innerHTML = '';
+    if (!S.design) return;
+    const sizes = selectedSizes();
+    const s200 = sizes.includes('200') && screenForSize(200);
+    const s144 = sizes.includes('144') && screenForSize(144);
+    if (s200) addCanvas(stage, s200, '200 × 228', false);
+    if (s144) {
+      addCanvas(stage, s144, '144 × 168 · color', false);
+      addCanvas(stage, s144, '144 × 168 · B&W', true);
+    }
+  }
+
+  function canvasesFor(screenId) {
+    return Array.from(document.querySelectorAll('canvas[data-screen="' + screenId + '"]'));
   }
 
   function renderOne(screenId) {
-    const cv = canvasFor(screenId);
-    if (!cv) return;
-    const ctx = cv.getContext('2d');
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, cv.width, cv.height);
-    PV.drawScreen(ctx, S.design, screenId, {
-      themeIdx: S.themeIdx,
-      state: S.state,
-      fonts: S.fonts,
-      bitmaps: S.bitmaps,
-      hidden: S.hidden,
-    });
-    drawOverlay(ctx, screenId);
+    for (const cv of canvasesFor(screenId)) {
+      const ctx = cv.getContext('2d');
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      PV.drawScreen(ctx, S.design, screenId, {
+        themeIdx: S.themeIdx,
+        state: S.state,
+        fonts: S.fonts,
+        bitmaps: S.bitmaps,
+        hidden: S.hidden,
+      });
+      drawOverlay(ctx, screenId);
+    }
   }
 
   function renderAll() {
@@ -301,7 +382,17 @@
   function zoomToFit() {
     if (!S.design) return;
     const stage = $('stage');
-    const screens = Object.values(S.design.screens);
+    const sizes = selectedSizes();
+    const screens = [];
+    if (sizes.includes('200')) {
+      const sid = screenForSize(200);
+      if (sid) screens.push(S.design.screens[sid]);
+    }
+    if (sizes.includes('144')) {
+      const sid = screenForSize(144);
+      if (sid) screens.push(S.design.screens[sid], S.design.screens[sid]);
+    }
+    if (!screens.length) return;
     const rowW = screens.reduce((a, sc) => a + sc.w, 0) +
       28 * (screens.length - 1) + 56;
     const maxH = Math.max.apply(null, screens.map(sc => sc.h)) + 90;
@@ -334,12 +425,66 @@
     return null;
   }
 
+  function targetGraphicsLayer(screenId) {
+    const sc = S.design.screens[screenId];
+    const sel = S.selections[screenId];
+    if (sel && sc.layers[sel.layer] && sc.layers[sel.layer].kind === 'graphics') {
+      return sel.layer;
+    }
+    const bg = sc.layers.findIndex(l => l.kind === 'graphics' && l.id === 'background');
+    if (bg >= 0) return bg;
+    const any = sc.layers.findIndex(l => l.kind === 'graphics');
+    return any;
+  }
+
+  function placeTool(screenId, x, y) {
+    const tool = S.tool;
+    if (!tool) return false;
+    if (isReferenceFace()) {
+      status('reference face is frozen — duplicate it first (see face path)');
+      return true;
+    }
+    snapshot();
+    try {
+      if (tool === 'layer-graphics' || tool === 'layer-text') {
+        const kind = tool === 'layer-graphics' ? 'graphics' : 'text';
+        const li = MODEL.addLayer(S.design, screenId, kind, {});
+        MODEL.mirrorLayerToSibling(S.design, screenId, li);
+        S.selections[screenId] = { layer: li, item: null };
+      } else if (tool === 'text' || tool === 'pixeltext') {
+        const li = MODEL.addLayer(S.design, screenId, tool,
+          { box: { x: Math.max(0, x - 36), y: Math.max(0, y - 14), w: 72, h: 28 } });
+        MODEL.mirrorLayerToSibling(S.design, screenId, li);
+        S.selections[screenId] = { layer: li, item: null };
+      } else {
+        let li = targetGraphicsLayer(screenId);
+        if (li === undefined || li === null || li < 0) {
+          li = MODEL.addLayer(S.design, screenId, 'graphics', { id: 'graphics' });
+          MODEL.mirrorLayerToSibling(S.design, screenId, li);
+        }
+        const ii = MODEL.addItem(S.design, screenId, li, tool, x, y);
+        MODEL.mirrorItemToSibling(S.design, screenId, li, ii);
+        S.selections[screenId] = { layer: li, item: ii };
+      }
+    } catch (err) {
+      S.undo.pop();
+      status('place failed: ' + err.message);
+      return true;
+    }
+    S.tool = null;
+    document.querySelectorAll('#toolbar button').forEach(b => b.classList.remove('active'));
+    renderAll();
+    renderPanels();
+    return true;
+  }
+
   function attachCanvas(cv, screenId) {
     let drag = null;
     cv.addEventListener('pointerdown', (e) => {
       S.activeScreen = screenId;
       cv.setPointerCapture(e.pointerId);
       const [x, y] = toDevice(e, cv);
+      if (S.tool && placeTool(screenId, x, y)) return;
       const sel = S.selections[screenId];
       if (sel && sel.vertex !== undefined && sel.vertex !== null) {
         const sc = S.design.screens[screenId];
@@ -472,11 +617,15 @@
       if (e.shiftKey) redo(); else undo();
       return;
     }
-    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Escape'].includes(e.key)) return;
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Escape', 'Delete', 'Backspace'].includes(e.key)) return;
     const screenId = activeScreenId();
     const sel = screenId && S.selections[screenId];
     if (!sel) return;
     e.preventDefault();
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      deleteSelection(screenId);
+      return;
+    }
     if (e.key === 'Escape') {
       if (sel.vertex !== undefined && sel.vertex !== null) sel.vertex = null;
       else S.selections[screenId] = null;
@@ -496,6 +645,63 @@
     renderAll();
     renderPanels();
   });
+
+  function deleteSelection(screenId) {
+    const sel = S.selections[screenId];
+    if (!sel) return;
+    if (isReferenceFace()) {
+      status('reference face is frozen — duplicate it first');
+      return;
+    }
+    const sc = S.design.screens[screenId];
+    const layer = sc.layers[sel.layer];
+    if (!layer) return;
+    const refsBefore = MODEL.collectRefs(S.design);
+    let desc = layer.id;
+    if (sel.item !== null && sel.item !== undefined && layer.items) {
+      const item = layer.items[sel.item];
+      if (item) {
+        const b = MODEL.bindingOf(item.value) || MODEL.bindingOf(layer.text);
+        if (b) {
+          let uses = 0;
+          for (const s of Object.values(S.design.screens)) {
+            for (const l of s.layers) {
+              if (MODEL.bindingOf(l.text) === b) uses++;
+              for (const it of l.items || []) if (MODEL.bindingOf(it.value) === b) uses++;
+            }
+          }
+          if (uses <= 2 && !window.confirm('Delete this ' + item.kind + ' (last use of $' + b + ' — its widget will be pruned)?')) return;
+        }
+        desc = layer.id + ' / item ' + sel.item;
+      }
+    } else if (!window.confirm('Delete layer "' + layer.id + '" on all sizes?')) {
+      return;
+    }
+    snapshot();
+    const sibId = MODEL.siblingScreenId(S.design, screenId);
+    const sibLayerId = layer.id;
+    if (sel.item !== null && sel.item !== undefined && layer.items) {
+      MODEL.deleteItem(S.design, screenId, sel.layer, sel.item);
+      if (sibId) {
+        const sib = S.design.screens[sibId];
+        const di = sib.layers.findIndex(l => l.id === sibLayerId);
+        if (di >= 0 && sib.layers[di].items.length) sib.layers[di].items.pop();
+      }
+    } else {
+      MODEL.deleteLayer(S.design, screenId, sel.layer);
+      if (sibId) {
+        const sib = S.design.screens[sibId];
+        const di = sib.layers.findIndex(l => l.id === sibLayerId);
+        if (di >= 0) MODEL.deleteLayer(S.design, sibId, di);
+      }
+    }
+    const pruned = MODEL.pruneUnusedWidgets(S.design, S.manifests);
+    S.selections[screenId] = null;
+    renderAll();
+    renderPanels();
+    status('deleted ' + desc + (pruned.widgets.length ? ' — pruned ' + pruned.widgets.join(', ') : ''));
+    void refsBefore;
+  }
 
   function renderPanels() {
     renderLayers();
@@ -555,6 +761,10 @@
       const kind = document.createElement('span');
       kind.className = 'kind';
       kind.textContent = layer.kind;
+      const badge = document.createElement('span');
+      badge.className = 'kind';
+      badge.textContent = bindingBadge(layer);
+      badge.title = 'data source: $state provided by a widget, setting, or the core';
       const up = document.createElement('button');
       up.textContent = '▲';
       up.onclick = (ev) => {
@@ -581,6 +791,7 @@
       row.appendChild(lock);
       row.appendChild(label);
       row.appendChild(kind);
+      row.appendChild(badge);
       row.appendChild(up);
       row.appendChild(down);
       row.addEventListener('dragstart', (ev) => {
@@ -598,7 +809,95 @@
         }
       });
       el.appendChild(row);
+      if (layer.kind === 'graphics') {
+        (layer.items || []).forEach((item, ii) => {
+          const ir = document.createElement('div');
+          const sel = S.selections[screenId];
+          ir.className = 'item' + (sel && sel.layer === li && sel.item === ii ? ' sel' : '');
+          ir.textContent = item.kind;
+          const badge = document.createElement('span');
+          badge.className = 'ibadge';
+          const b = MODEL.bindingOf(item.value);
+          if (b) {
+            const p = providerOf(b);
+            badge.textContent = p ? '$' + b + ' ⇐ ' + (p.widget || p.owner) : '$' + b + ' ⚠';
+          }
+          ir.appendChild(badge);
+          ir.onclick = () => {
+            S.selections[screenId] = { layer: li, item: ii };
+            renderAll();
+            renderPanels();
+          };
+          el.appendChild(ir);
+        });
+      }
     });
+  }
+
+  function providerOf(name) {
+    if (!name || !S.design) return null;
+    const all = MODEL.listProviders(S.manifests, S.design.settings);
+    for (const t of Object.keys(all)) {
+      const hit = all[t].find(p => p.name === name);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  function bindingBadge(layer) {
+    let ref = null;
+    if ((layer.kind === 'text' || layer.kind === 'pixeltext') && typeof layer.text === 'string') {
+      ref = layer.text;
+    } else if (layer.kind === 'graphics') {
+      const item = (layer.items || []).find(it => typeof it.value === 'string');
+      if (item) ref = item.value;
+    }
+    const name = MODEL.bindingOf(ref);
+    if (!name) return '';
+    const p = providerOf(name);
+    if (!p) return '$' + name + ' ⚠ no provider';
+    if (p.widget && !(S.design.widgets || []).includes(p.widget)) {
+      return '$' + name + ' ⚠ ' + p.widget + ' off';
+    }
+    return '$' + name + ' ⇐ ' + (p.widget || p.owner);
+  }
+
+  function sourcePicker(labelText, type, getRef, setRef) {
+    const list = (MODEL.listProviders(S.manifests, S.design.settings)[type] || [])
+      .slice().sort((a, b) => (a.name < b.name ? -1 : 1));
+    const current = MODEL.bindingOf(getRef());
+    const known = list.some(p => p.name === current);
+    const wrap = document.createElement('label');
+    wrap.textContent = labelText + ' ';
+    const select = document.createElement('select');
+    if (!known) {
+      const o = document.createElement('option');
+      o.value = '';
+      o.textContent = current ? '$' + current + ' (custom — no provider)' : '(unbound)';
+      select.appendChild(o);
+    }
+    for (const p of list) {
+      const o = document.createElement('option');
+      o.value = p.name;
+      o.textContent = '$' + p.name + ' ⇐ ' + (p.widget ? p.widget + ' widget' : p.owner);
+      select.appendChild(o);
+    }
+    select.value = known ? current : '';
+    select.onchange = () => {
+      if (!select.value) return;
+      snapshot();
+      setRef('$' + select.value);
+      const picked = list.find(p => p.name === select.value);
+      if (picked && picked.widget && MODEL.ensureWidget(S.design, picked.widget)) {
+        status('connected ' + picked.widget + ' widget (added to face)');
+      } else {
+        status('source: $' + select.value);
+      }
+      renderAll();
+      renderPanels();
+    };
+    wrap.appendChild(select);
+    return wrap;
   }
 
   function fieldNumber(label, get, set) {
@@ -633,6 +932,11 @@
     const h = document.createElement('h3');
     h.textContent = layer.id + (sel.item !== null && sel.item !== undefined ? ' / item ' + sel.item : '');
     el.appendChild(h);
+    const del = document.createElement('button');
+    del.textContent = sel.item !== null && sel.item !== undefined ? 'Delete item' : 'Delete layer';
+    del.title = 'Delete on both sizes (Del key works too)';
+    del.onclick = () => deleteSelection(screenId);
+    el.appendChild(del);
     try {
       const b = MODEL.itemBounds(S.design, screenId, sel.layer,
         sel.item === undefined ? null : sel.item);
@@ -701,11 +1005,51 @@
       sel.onchange = () => { snapshot(); layer.font = sel.value; loadFont(layer.font); renderAll(); };
       wrap.appendChild(sel);
       el.appendChild(wrap);
+      const up = document.createElement('label');
+      up.textContent = 'upload TTF (adds to fonts[] + resources) ';
+      const file = document.createElement('input');
+      file.type = 'file';
+      file.accept = '.ttf,.otf';
+      file.onchange = () => {
+        const f = file.files[0];
+        if (!f) return;
+        const rd = new FileReader();
+        rd.onload = async () => {
+          try {
+            const b64 = String(rd.result).split(',')[1];
+            const fontId = prompt('Font id (lowercase, e.g. jersey40):', 'custom25');
+            if (!fontId) return;
+            const resource = prompt('Resource (e.g. FONT_CUSTOM_25):', 'FONT_CUSTOM_25');
+            if (!resource) return;
+            snapshot();
+            await api('/api/font', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ design: S.facePath, fontId, resource, b64 }),
+            });
+            await loadFace(S.facePath);
+            status('font added: ' + fontId);
+          } catch (err) {
+            S.undo.pop();
+            status('font upload failed: ' + err.message);
+          }
+        };
+        rd.readAsDataURL(f);
+      };
+      up.appendChild(file);
+      el.appendChild(up);
     }
     if (layer.kind === 'pixeltext') {
       el.appendChild(fieldNumber('scaleDivisor', () => layer.scaleDivisor, (v) => {
         layer.scaleDivisor = Math.max(1, Math.round(v));
       }));
+    }
+    if ((layer.kind === 'text' || layer.kind === 'pixeltext') && typeof layer.text === 'string') {
+      el.appendChild(sourcePicker('source (widget data)', 'string',
+        () => layer.text, (v) => { layer.text = v; }));
+    }
+    if (target.kind === 'meterbar' && typeof target.value === 'string') {
+      el.appendChild(sourcePicker('value (widget data)', 'int',
+        () => target.value, (v) => { target.value = v; }));
     }
   }
 
@@ -782,6 +1126,10 @@
 
   async function save() {
     if (!S.design || !S.facePath) return;
+    if (isReferenceFace()) {
+      status('reference face is frozen — change the face path to a copy first');
+      return;
+    }
     try {
       await api('/api/design?path=' + encodeURIComponent(S.facePath), {
         method: 'PUT',
@@ -833,11 +1181,31 @@
     });
     initTheme();
     const params = new URLSearchParams(location.search);
-    const face = params.get('face') || 'tools/pebble-editor/examples/neubrutalism-plus.design.json';
+    const face = params.get('face') || 'tools/pebble-editor/examples/blank.design.json';
     $('facePath').value = face;
     $('loadBtn').onclick = () => loadFace($('facePath').value.trim());
     $('saveBtn').onclick = save;
     $('genBtn').onclick = generate;
+    $('dupBtn').onclick = async () => {
+      const dst = prompt('Duplicate to path (repo-relative):', S.facePath.replace(/\.design\.json$/, '-copy.design.json'));
+      if (!dst) return;
+      try {
+        await api('/api/face', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'duplicate', src: S.facePath, dst }) });
+        $('facePath').value = dst;
+        await loadFace(dst);
+      } catch (e) { status('duplicate failed: ' + e.message); }
+    };
+    $('newBtn').onclick = async () => {
+      const dst = prompt('New face path (repo-relative):', 'tools/pebble-editor/examples/my-face.design.json');
+      if (!dst) return;
+      const name = prompt('Display name:', 'My Face') || 'My Face';
+      const template = (prompt('Template (blank/starter):', 'blank') || 'blank').toLowerCase() === 'starter' ? 'starter' : 'blank';
+      try {
+        await api('/api/face', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'new', dst, name, template }) });
+        $('facePath').value = dst;
+        await loadFace(dst);
+      } catch (e) { status('new failed: ' + e.message); }
+    };
     $('undoBtn').onclick = undo;
     $('redoBtn').onclick = redo;
     $('zoomSel').onchange = () => {
@@ -850,6 +1218,15 @@
       buildCanvases();
       renderAll();
     };
+    document.querySelectorAll('#toolbar button').forEach((b) => {
+      b.onclick = () => {
+        const t = b.dataset.tool;
+        S.tool = S.tool === t ? null : t;
+        document.querySelectorAll('#toolbar button').forEach(x => x.classList.remove('active'));
+        if (S.tool) b.classList.add('active');
+        status(S.tool ? 'placing ' + S.tool + ' — click a canvas' : 'tool off');
+      };
+    });
     loadFace(face).then(() => {
       zoomToFit();
       buildCanvases();

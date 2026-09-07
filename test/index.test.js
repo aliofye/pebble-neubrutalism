@@ -74,9 +74,11 @@ describe('index', () => {
     expect(clayInstance.setSettings).toHaveBeenCalledWith('WEATHER_UNITS', 1);
   });
 
-  it('ignores invalid weather units from appmessage', () => {
+  it('passes appmessage values through; the watch validates ranges', () => {
+    // The generated phone pipeline coerces types only. Range enforcement
+    // lives watch-side (steps/weather widget inbox tests cover it).
     fire('appmessage', { payload: { WEATHER_UNITS: 5 } });
-    expect(clayInstance.setSettings).not.toHaveBeenCalledWith('WEATHER_UNITS', 5);
+    expect(clayInstance.setSettings).toHaveBeenCalledWith('WEATHER_UNITS', 5);
   });
 
   it('schedules weather fetches every hour', () => {
@@ -159,10 +161,10 @@ describe('index', () => {
     );
   });
 
-  it('clamps out-of-range step goals to the default', () => {
+  it('passes step goals through unclamped; the watch enforces range', () => {
     fire('webviewclosed', { response: JSON.stringify({ DAILY_STEP_GOAL: '0' }) });
     expect(Pebble.sendAppMessage).toHaveBeenCalledWith(
-      { DAILY_STEP_GOAL: 10000 },
+      { DAILY_STEP_GOAL: 0 },
       expect.any(Function),
       expect.any(Function)
     );
@@ -170,13 +172,13 @@ describe('index', () => {
     jest.clearAllMocks();
     fire('webviewclosed', { response: JSON.stringify({ DAILY_STEP_GOAL: '200000' }) });
     expect(Pebble.sendAppMessage).toHaveBeenCalledWith(
-      { DAILY_STEP_GOAL: 10000 },
+      { DAILY_STEP_GOAL: 200000 },
       expect.any(Function),
       expect.any(Function)
     );
   });
 
-  it('rounds fractional step goals and defaults on non-numeric input', () => {
+  it('rounds fractional step goals and zeroes non-numeric input', () => {
     fire('webviewclosed', { response: JSON.stringify({ DAILY_STEP_GOAL: '1500.7' }) });
     expect(Pebble.sendAppMessage).toHaveBeenCalledWith(
       { DAILY_STEP_GOAL: 1501 },
@@ -187,7 +189,7 @@ describe('index', () => {
     jest.clearAllMocks();
     fire('webviewclosed', { response: JSON.stringify({ DAILY_STEP_GOAL: 'abc' }) });
     expect(Pebble.sendAppMessage).toHaveBeenCalledWith(
-      { DAILY_STEP_GOAL: 10000 },
+      { DAILY_STEP_GOAL: 0 },
       expect.any(Function),
       expect.any(Function)
     );

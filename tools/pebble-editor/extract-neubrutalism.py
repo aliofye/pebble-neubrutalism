@@ -237,6 +237,22 @@ def screen(w, h, poly_date, poly_wx, font, date_box, wx_box, bt_center,
 doc = {
     "schema": 1,
     "name": "neubrutalism-plus",
+    "widgets": ["battery", "steps", "weather"],
+    "settings": [
+        {"var": "bars_mode", "key": "BARS_MODE", "kind": "int",
+         "default": 0, "min": 0, "max": 2, "persist": 8,
+         "clay": {
+             "type": "select",
+             "messageKey": "BARS_MODE",
+             "label": "Metric Bars",
+             "defaultValue": 0,
+             "options": [
+                 {"label": "Battery + Steps", "value": 0},
+                 {"label": "Battery Only", "value": 1},
+                 {"label": "Steps Only", "value": 2},
+             ],
+         }},
+    ],
     "constants": {
         "orange_stroke": 3,
         "metric_shadow": 3,

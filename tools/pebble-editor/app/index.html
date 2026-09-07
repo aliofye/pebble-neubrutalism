@@ -16,6 +16,10 @@
   <div class="sep"></div>
   <button id="saveBtn" class="primary" title="Save design.json">Save</button>
   <button id="genBtn" title="Generate C code">Generate C</button>
+  <button id="dupBtn" title="Duplicate face to a new path">Duplicate</button>
+  <button id="newBtn" title="New face from blank/starter">New</button>
+  <div class="sep"></div>
+  <span id="platforms" title="Platforms to preview (one canvas each; same-size platforms share a screen)"></span>
   <div class="spacer"></div>
   <label class="inline">Zoom <select id="zoomSel">
     <option value="1">1x</option>
@@ -29,6 +33,16 @@
 </header>
 <div id="workbench">
   <aside id="left">
+    <h2 class="sec">Add</h2>
+    <div id="toolbar">
+      <button data-tool="rect" title="Click canvas to place a rectangle">Rect</button>
+      <button data-tool="polygon" title="Click canvas to place a polygon">Poly</button>
+      <button data-tool="meterbar" title="Click canvas to place a progress bar">Bar</button>
+      <button data-tool="text" title="Click canvas to place bound text">Text</button>
+      <button data-tool="pixeltext" title="Click canvas to place pixel text">Pixel</button>
+      <button data-tool="layer-graphics" title="Add graphics layer (both sizes)">+Gfx</button>
+      <button data-tool="layer-text" title="Add text layer (both sizes)">+Txt</button>
+    </div>
     <h2 class="sec">Layers</h2>
     <div id="layers"></div>
     <h2 class="sec">Properties</h2>

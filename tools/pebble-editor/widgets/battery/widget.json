@@ -1,0 +1,32 @@
+{
+  "name": "battery",
+  "version": 1,
+  "desc": "Battery percent state. Event-driven only: peeks on init, updates on battery service events, dirties the bars layer solely on percent change.",
+  "provides": [
+    {
+      "name": "battery",
+      "type": "int",
+      "desc": "battery percent 0-100",
+      "getter": "battery_widget_percent"
+    }
+  ],
+  "requires": {
+    "services": [
+      "battery"
+    ],
+    "layers": [
+      "bars"
+    ]
+  },
+  "persist": {},
+  "inbox": [],
+  "sync": [],
+  "clay": [],
+  "js": null,
+  "cost": {
+    "wakeups": "none; OS battery service events only",
+    "redraws": "bars layer, only when the percent value changes",
+    "persist": "none",
+    "notes": "Cheapest possible widget: no polling, no timers, no settings."
+  }
+}

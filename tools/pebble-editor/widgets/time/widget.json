@@ -1,0 +1,52 @@
+{
+  "name": "time",
+  "version": 1,
+  "desc": "Pixel-clock state. Formats time_str and display_hour from the shared minute tick (no timer of its own), dirties the time layer solely on change. Owns the 24-hour setting: persisted Clay toggle, phone-synced.",
+  "provides": [
+    {
+      "name": "time_str",
+      "type": "string",
+      "desc": "formatted time, e.g. 17:26 or 5:26",
+      "getter": "time_widget_text"
+    },
+    {
+      "name": "display_hour",
+      "type": "int",
+      "desc": "hour as displayed (12h-converted unless 24h mode)",
+      "getter": "time_widget_display_hour"
+    }
+  ],
+  "requires": {
+    "services": [
+      "tick"
+    ],
+    "layers": [
+      "time"
+    ]
+  },
+  "persist": {
+    "TIME_FORMAT": 1
+  },
+  "inbox": [
+    "TIME_FORMAT"
+  ],
+  "sync": [
+    "TIME_FORMAT"
+  ],
+  "clay": [
+    {
+      "type": "toggle",
+      "messageKey": "TIME_FORMAT",
+      "label": "24-Hour Time",
+      "description": "Turn off to use the 12-hour time format.",
+      "defaultValue": true
+    }
+  ],
+  "js": null,
+  "cost": {
+    "wakeups": "none beyond the shared minute tick (no separate subscription)",
+    "redraws": "time layer, only when the formatted time changes",
+    "persist": "24h flag, written solely when the setting changes",
+    "notes": "Styles (pixel font, scale, color, box, conditional overrides) stay in the design's pixeltext layer; the widget only feeds state."
+  }
+}

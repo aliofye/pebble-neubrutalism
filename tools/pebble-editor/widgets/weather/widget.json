@@ -1,0 +1,89 @@
+{
+  "name": "weather",
+  "version": 1,
+  "desc": "Weather bubble state. The phone pushes temp/code via AppMessage (see widget.js); the watch persists, formats, and dirties on change only. No on-watch timers or polling.",
+  "provides": [
+    {
+      "name": "weather_str",
+      "type": "string",
+      "desc": "formatted temp+units or placeholder",
+      "getter": "weather_widget_text"
+    },
+    {
+      "name": "weather_code",
+      "type": "int",
+      "desc": "WMO weather code",
+      "getter": "weather_widget_code"
+    },
+    {
+      "name": "weather_available",
+      "type": "bool",
+      "desc": "a reading has arrived",
+      "getter": "weather_widget_available"
+    },
+    {
+      "name": "weather_enabled",
+      "type": "bool",
+      "desc": "bubble enabled in settings",
+      "getter": "weather_widget_enabled"
+    }
+  ],
+  "requires": {
+    "services": [
+      "appmessage"
+    ],
+    "layers": [
+      "background",
+      "weather"
+    ]
+  },
+  "persist": {
+    "WEATHER_UNITS": 5,
+    "WEATHER_TEMP": 6,
+    "WEATHER_ENABLED": 7,
+    "WEATHER_CODE": 9
+  },
+  "inbox": [
+    "WEATHER_TEMP",
+    "WEATHER_CODE",
+    "WEATHER_UNITS",
+    "WEATHER_ENABLED"
+  ],
+  "sync": [
+    "WEATHER_UNITS",
+    "WEATHER_ENABLED"
+  ],
+  "clay": [
+    {
+      "type": "toggle",
+      "messageKey": "WEATHER_ENABLED",
+      "label": "Show Weather",
+      "description": "Turn off to hide the temperature bubble and stop background weather updates.",
+      "defaultValue": true
+    },
+    {
+      "type": "select",
+      "messageKey": "WEATHER_UNITS",
+      "label": "Temperature Units",
+      "description": "Choose how the weather bubble displays temperature.",
+      "defaultValue": 0,
+      "options": [
+        {
+          "label": "Fahrenheit",
+          "value": 0
+        },
+        {
+          "label": "Celsius",
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "js": "widget_weather.js",
+  "cost": {
+    "wakeups": "none on-watch; phone fetches hourly with a 30min location cache (see widget_weather.js)",
+    "redraws": "background on code change, weather text on temp/units change; unchanged values never redraw",
+    "persist": "temp/code/units/enabled, each written solely on change",
+    "notes": "Visibility itself is evaluated by generated draw/visible helpers; the widget only feeds state."
+  }
+}

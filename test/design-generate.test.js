@@ -12,7 +12,7 @@ function load(name) {
 }
 
 test('checked-in examples validate clean', () => {
-  for (const f of ['neubrutalism-plus.design.json', 'fixture.design.json']) {
+  for (const f of ['neubrutalism-plus.design.json', 'fixture.design.json', 'blank.design.json', 'starter.design.json']) {
     expect(validateDesign(load(f))).toEqual([]);
   }
 });
@@ -42,4 +42,60 @@ test('unknown expression name throws', () => {
   const doc = load('fixture.design.json');
   doc.screens.main.layers[0].items[0].box.w = 'w-nope';
   expect(() => new Emitter(doc, 'x.design.json').generate()).toThrow('unknown name');
+});
+
+test('plain bar emits track + percent fill without chrome', () => {
+  const doc = load('blank.design.json');
+  doc.state = [{ name: 'battery', type: 'int' }];
+  doc.screens.w200.layers[0].items.push({
+    kind: 'bar', box: { x: 10, y: 10, w: 100, h: 20 },
+    value: '$battery', fill: '$battery_bar', track: '$battery_frame',
+  });
+  const out = new Emitter(doc, 'blank.design.json').generate();
+  expect(out.source).toMatch(/_bar\(ctx, 10, 10, 100, 20,/);
+  expect(out.source).toMatch(/\(w \* percent\) \/ 100/);
+  expect(out.source).not.toMatch(/compact/);
+});
+
+test('unified text+pixelFont emits the same code as pixeltext kind', () => {
+  const base = {
+    schema: 1, name: 'u', constants: {},
+    screens: { main: { w: 144, h: 168, layers: [] } },
+    themes: [{ name: 'a', tokens: { background: 'GColorWhite', ink: 'GColorBlack' } }],
+    state: [{ name: 'time_str', type: 'string' }],
+    fonts: [], bitmaps: [],
+    pixelFonts: { digits: { rows: 1, chars: { 0: ['11'], ':': ['00'] } } },
+  };
+  const mk = (kind) => {
+    const doc = JSON.parse(JSON.stringify(base));
+    doc.screens.main.layers.push({
+      id: 'clock', kind,
+      box: { x: 0, y: 0, w: 100, h: 40 },
+      pixelFont: 'digits', fill: '$ink', text: '$time_str', scaleDivisor: 40,
+    });
+    return new Emitter(doc, 'u.design.json').generate();
+  };
+  const a = mk('text');
+  const b = mk('pixeltext');
+  expect(a.source).toBe(b.source);
+});
+
+test('resolveRoleLayers maps slots by binding, not by id', () => {
+  const { resolveRoleLayers } = require('../tools/pebble-editor/generate-app');
+  const manifests = {
+    battery: { provides: [{ name: 'battery', type: 'int' }], requires: { layers: ['bars'] } },
+    time: { provides: [{ name: 'time_str', type: 'string' }], requires: { layers: ['time'] } },
+  };
+  // Legacy face: same-named layers win.
+  const legacy = load('neubrutalism-plus.design.json');
+  expect(resolveRoleLayers(legacy, manifests)).toMatchObject({ bars: 'bars', time: 'time' });
+  // Generic face: custom ids carrying the bindings win.
+  const doc = load('blank.design.json');
+  doc.widgets = ['battery'];
+  doc.state = [{ name: 'battery', type: 'int' }];
+  doc.screens.w200.layers.push({
+    id: 'mymeters', kind: 'graphics',
+    items: [{ kind: 'bar', box: { x: 0, y: 0, w: 10, h: 10 }, value: '$battery', fill: 'GColorBlack', track: 'GColorWhite' }],
+  });
+  expect(resolveRoleLayers(doc, manifests).bars).toBe('mymeters');
 });

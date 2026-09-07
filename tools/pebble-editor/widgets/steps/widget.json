@@ -1,0 +1,50 @@
+{
+  "name": "steps",
+  "version": 1,
+  "desc": "Daily step-goal progress. Polled once per minute tick (cheap cached health read), dirties the bars layer solely on percent change. Goal is a persisted Clay setting.",
+  "provides": [
+    {
+      "name": "steps",
+      "type": "int",
+      "desc": "step-goal percent 0-100",
+      "getter": "steps_widget_percent"
+    }
+  ],
+  "requires": {
+    "services": [
+      "health",
+      "tick"
+    ],
+    "layers": [
+      "bars"
+    ]
+  },
+  "persist": {
+    "DAILY_STEP_GOAL": 4
+  },
+  "inbox": [
+    "DAILY_STEP_GOAL"
+  ],
+  "sync": [
+    "DAILY_STEP_GOAL"
+  ],
+  "clay": [
+    {
+      "type": "slider",
+      "messageKey": "DAILY_STEP_GOAL",
+      "label": "Daily Step Goal",
+      "description": "Progress bar fills as you approach this many steps.",
+      "min": 1000,
+      "max": 100000,
+      "step": 1000,
+      "defaultValue": 10000
+    }
+  ],
+  "js": null,
+  "cost": {
+    "wakeups": "none beyond the shared minute tick (no separate subscription)",
+    "redraws": "bars layer, only when the percent value changes",
+    "persist": "goal integer, written solely when the setting changes",
+    "notes": "No health event subscription; the minute tick poll is the only read."
+  }
+}
