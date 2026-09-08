@@ -17,10 +17,9 @@ This is a Pebble smartwatch application written in C using the Pebble SDK.
 
 ## Supported Platforms
 
-The app targets multiple Pebble watch models:
+The app targets the platforms in `package.json` (`pebble.targetPlatforms`):
 - aplite (Pebble classic)
 - basalt (Pebble Time)
-- chalk (Pebble Time Round)
 - diorite (Pebble 2)
 - emery (Pebble Time 2)
 - flint (Pebble 2 Duo)
@@ -46,46 +45,19 @@ If you need more information on the `pebble` command or a sub-command, append `-
 ## Project Structure
 
 ```
-src/c/           - C source files for the watchapp
-src/pkjs/        - PebbleKitJS files (currently empty)
-worker_src/c/    - Worker source files (optional, not present)
-resources/       - Images, fonts, and other resources (not present)
+src/c/           - C source files for the watchface (neubrutalism.c, layout, glyphs, time_util, steps_util)
+src/pkjs/        - PebbleKitJS config + weather (index.js, config.json, custom-clay.js)
+resources/       - Fonts (Jersey10) and images (bt_disconnect.png)
+test/c/          - C unit tests (run via scripts/test-c.sh)
+test/*.test.js   - JS unit tests (run via npm test / jest)
+scripts/         - Build/test helpers (build-watch.sh, test-c.sh)
+docs/            - Publishing notes, QA checklist, screenshots
+design-sandbox/  - HTML preview sandbox
 ```
-## Configuration
-
-By default, this project is initialized as a watchface. To make it an app, replace "watchface": true with "watchface": false in package.json.
-
-## Architecture
-
-The application follows the standard Pebble app architecture:
-
-1. **Main Entry Point**: `src/c` - The `main()` function initializes the app and starts the event loop
-2. **Window Management**: Single window app with text layer for displaying button press feedback
-3. **Event Handling**: Button click handlers registered via `prv_click_config_provider` for UP, DOWN, and SELECT buttons
 
 ## SDK Documentation
 
 The full Pebble SDK documentation is available at https://developer.repebble.com.
-
-Main Categories:
-- Tutorials - Step-by-step learning (C watchface tutorial in 5 parts, advanced topics)
-- Developer Guides - Comprehensive reference organized by topic
-
-Key Sections:
-- App Resources - Images, fonts, vector graphics, 256 resource limit
-- User Interfaces - Layer hierarchy, TextLayer, MenuLayer, round vs rectangular displays
-- Events & Services - Buttons, accelerometer, compass, health data, background workers
-- Communication - Bluetooth AppMessage, PebbleKit JS/Android/iOS integration
-- Graphics & Animations - Drawing APIs, property animations, vector graphics
-- Debugging - App logs, GDB, common errors and solutions
-- Best Practices - Multi-platform support, battery conservation, modular architecture
-- Design & Interaction - Glance-first design, one-click actions, platform guidelines
-- App Store Publishing - Submission requirements, assets, analytics
-
-Key Entry Points:
-- https://developer.repebble.com/tutorials/watchface-tutorial/part1 - C development start
-- https://developer.repebble.com/guides/events-and-services/buttons - Button handling
-- https://developer.repebble.com/guides/user-interfaces/layers - UI foundations
 
 ## Development Best Practices
 
