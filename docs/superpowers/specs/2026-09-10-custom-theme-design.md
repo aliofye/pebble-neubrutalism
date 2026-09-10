@@ -103,7 +103,8 @@ Config open ──SETTINGS_REQUEST──▶ prv_send_settings (theme + 6) ──
     `battery_status = false` (flat),
   - `weather_condition_colors = false` (flat),
   - date/weather/time colors held separately (see below) since the struct
-    has no fields for them.
+    has no fields for them. Date AND weather text both follow the custom
+    time color (amended post-testing; v1 black-text limitation dropped).
 - Static `GColor s_custom_date, s_custom_weather, s_custom_time`, rebuilt
   alongside the theme.
 - `prv_theme()` returns `&s_custom_theme` when
