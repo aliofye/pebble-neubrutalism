@@ -13,6 +13,27 @@ var weatherTimer = null;
 var WEATHER_FETCH_INTERVAL_MS = 60 * 60 * 1000; // hourly; keeps the bubble fresh
 var LOCATION_CACHE_MS = 30 * 60 * 1000;         // city-level accuracy is enough
 
+var CUSTOM_DEFAULTS = {
+  CUSTOM_DATE: 0xFFFFFF,
+  CUSTOM_WEATHER: 0xFFAA00,
+  CUSTOM_TIME: 0x000000,
+  CUSTOM_BODY: 0xFF5500,
+  CUSTOM_STEP: 0xAA55FF,
+  CUSTOM_BATTERY: 0xAA55FF,
+};
+
+function coerceColor(value, fallback) {
+  var n = Number(value);
+  if (!isFinite(n)) {
+    return fallback;
+  }
+  n = Math.round(n);
+  if (n < 0x000000 || n > 0xFFFFFF) {
+    return fallback;
+  }
+  return n;
+}
+
 function parseBool(value) {
   return value === true || value === 'true' || value === 1 || value === '1' ||
          value === 'on';
@@ -133,9 +154,36 @@ Pebble.addEventListener('appmessage', function(event) {
   if (weatherEnabledPayload === undefined) {
     weatherEnabledPayload = event.payload[messageKeys.WEATHER_ENABLED];
   }
+  var customDate = event.payload.CUSTOM_DATE;
+  if (customDate === undefined) {
+    customDate = event.payload[messageKeys.CUSTOM_DATE];
+  }
+  var customWeather = event.payload.CUSTOM_WEATHER;
+  if (customWeather === undefined) {
+    customWeather = event.payload[messageKeys.CUSTOM_WEATHER];
+  }
+  var customTime = event.payload.CUSTOM_TIME;
+  if (customTime === undefined) {
+    customTime = event.payload[messageKeys.CUSTOM_TIME];
+  }
+  var customBody = event.payload.CUSTOM_BODY;
+  if (customBody === undefined) {
+    customBody = event.payload[messageKeys.CUSTOM_BODY];
+  }
+  var customStep = event.payload.CUSTOM_STEP;
+  if (customStep === undefined) {
+    customStep = event.payload[messageKeys.CUSTOM_STEP];
+  }
+  var customBattery = event.payload.CUSTOM_BATTERY;
+  if (customBattery === undefined) {
+    customBattery = event.payload[messageKeys.CUSTOM_BATTERY];
+  }
   if (timeFormat === undefined && colorTheme === undefined &&
       dailyStepGoal === undefined && barsMode === undefined &&
-      weatherUnits === undefined && weatherEnabledPayload === undefined) {
+      weatherUnits === undefined && weatherEnabledPayload === undefined &&
+      customDate === undefined && customWeather === undefined &&
+      customTime === undefined && customBody === undefined &&
+      customStep === undefined && customBattery === undefined) {
     return;
   }
 
@@ -166,6 +214,19 @@ Pebble.addEventListener('appmessage', function(event) {
       }
     }
   }
+  var customs = {
+    CUSTOM_DATE: customDate,
+    CUSTOM_WEATHER: customWeather,
+    CUSTOM_TIME: customTime,
+    CUSTOM_BODY: customBody,
+    CUSTOM_STEP: customStep,
+    CUSTOM_BATTERY: customBattery,
+  };
+  Object.keys(customs).forEach(function(key) {
+    if (customs[key] !== undefined) {
+      clay.setSettings(key, coerceColor(customs[key], CUSTOM_DEFAULTS[key]));
+    }
+  });
   if (configurationPending) {
     openConfiguration();
   }
@@ -193,6 +254,16 @@ Pebble.addEventListener('webviewclosed', function(event) {
   if (settings[messageKeys.BARS_MODE] !== undefined) {
     settings[messageKeys.BARS_MODE] = Number(settings[messageKeys.BARS_MODE]);
   }
+  Object.keys(CUSTOM_DEFAULTS).forEach(function(key) {
+    if (settings[key] !== undefined || settings[messageKeys[key]] !== undefined) {
+      var raw = settings[key] !== undefined ? settings[key] : settings[messageKeys[key]];
+      var coerced = coerceColor(Number(raw), CUSTOM_DEFAULTS[key]);
+      settings[key] = coerced;
+      if (messageKeys[key] !== undefined && messageKeys[key] !== key) {
+        settings[messageKeys[key]] = coerced;
+      }
+    }
+  });
   if (settings[messageKeys.WEATHER_UNITS] !== undefined) {
     settings[messageKeys.WEATHER_UNITS] = Number(settings[messageKeys.WEATHER_UNITS]);
     if (settings[messageKeys.WEATHER_UNITS] === 0 || settings[messageKeys.WEATHER_UNITS] === 1) {

@@ -198,4 +198,48 @@ describe('index', () => {
     fire('webviewclosed', { response: null });
     expect(Pebble.sendAppMessage).not.toHaveBeenCalled();
   });
+
+  it('passes custom colors through as numbers', () => {
+    fire('webviewclosed', {
+      response: JSON.stringify({
+        COLOR_THEME: '6',
+        CUSTOM_DATE: '16777215',
+        CUSTOM_WEATHER: '16711680',
+        CUSTOM_TIME: '0',
+        CUSTOM_BODY: '16733440',
+        CUSTOM_STEP: '11184639',
+        CUSTOM_BATTERY: '11184639',
+      }),
+    });
+    expect(Pebble.sendAppMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        COLOR_THEME: 6,
+        CUSTOM_DATE: 16777215,
+        CUSTOM_WEATHER: 16711680,
+        CUSTOM_TIME: 0,
+        CUSTOM_BODY: 16733440,
+        CUSTOM_STEP: 11184639,
+        CUSTOM_BATTERY: 11184639,
+      }),
+      expect.any(Function),
+      expect.any(Function)
+    );
+  });
+
+  it('falls back to defaults for invalid custom colors', () => {
+    fire('webviewclosed', {
+      response: JSON.stringify({ CUSTOM_DATE: 'not-a-color', CUSTOM_BODY: '-5' }),
+    });
+    expect(Pebble.sendAppMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ CUSTOM_DATE: 0xFFFFFF, CUSTOM_BODY: 0xFF5500 }),
+      expect.any(Function),
+      expect.any(Function)
+    );
+  });
+
+  it('syncs custom colors from watch appmessage into clay', () => {
+    fire('appmessage', { payload: { CUSTOM_DATE: 16777215, CUSTOM_STEP: 11184639 } });
+    expect(clayInstance.setSettings).toHaveBeenCalledWith('CUSTOM_DATE', 16777215);
+    expect(clayInstance.setSettings).toHaveBeenCalledWith('CUSTOM_STEP', 11184639);
+  });
 });
