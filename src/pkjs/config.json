@@ -29,8 +29,65 @@
           { "label": "Ocean Blue", "value": 2 },
           { "label": "Amber LCD", "value": 3 },
           { "label": "Monochrome", "value": 4 },
-          { "label": "Purple Pixel", "value": 5 }
+          { "label": "Purple Pixel", "value": 5 },
+          { "label": "Custom", "value": 6 }
         ]
+      },
+      {
+        "type": "heading",
+        "defaultValue": "Custom Colors"
+      },
+      {
+        "type": "text",
+        "id": "custom-preview",
+        "defaultValue": "<canvas id=\"custom-preview-canvas\" width=\"200\" height=\"60\" style=\"width:100%;image-rendering:pixelated;border:1px solid #888\"></canvas>"
+      },
+      {
+        "type": "color",
+        "messageKey": "CUSTOM_DATE",
+        "label": "Date Bubble",
+        "defaultValue": "FFFFFF",
+        "description": "Fill of the date bubble.",
+        "group": "customColors"
+      },
+      {
+        "type": "color",
+        "messageKey": "CUSTOM_WEATHER",
+        "label": "Weather Bubble",
+        "defaultValue": "FFAA00",
+        "description": "Flat fill of the weather bubble.",
+        "group": "customColors"
+      },
+      {
+        "type": "color",
+        "messageKey": "CUSTOM_TIME",
+        "label": "Time Digits",
+        "defaultValue": "000000",
+        "description": "Color of the time digits and date text.",
+        "group": "customColors"
+      },
+      {
+        "type": "color",
+        "messageKey": "CUSTOM_BODY",
+        "label": "Time Background",
+        "defaultValue": "FF5500",
+        "description": "Background block behind the time.",
+        "group": "customColors"
+      },
+      {
+        "type": "color",
+        "messageKey": "CUSTOM_STEP",
+        "label": "Step Bar",
+        "defaultValue": "AA55FF",
+        "group": "customColors"
+      },
+      {
+        "type": "color",
+        "messageKey": "CUSTOM_BATTERY",
+        "label": "Battery Bar",
+        "defaultValue": "AA55FF",
+        "description": "Flat fill, no low/mid/high stages in Custom.",
+        "group": "customColors"
       },
       {
         "type": "heading",
