@@ -52,6 +52,10 @@ static bool s_use_24_hour;
 static uint8_t s_color_theme;
 static uint8_t s_bars_mode;
 
+// Custom theme state: six 24-bit HEX colors from the phone (indices:
+// 0=DATE, 1=WEATHER, 2=TIME, 3=BODY, 4=STEP, 5=BATTERY).
+static int32_t s_custom_hex[6];
+
 enum {
   PERSIST_KEY_TIME_FORMAT = 1,
   PERSIST_KEY_COLOR_THEME = 2,
@@ -61,6 +65,21 @@ enum {
   PERSIST_KEY_WEATHER_ENABLED = 7,
   PERSIST_KEY_BARS_MODE = 8,
   PERSIST_KEY_WEATHER_CODE = 9,
+  PERSIST_KEY_CUSTOM_DATE = 10,
+  PERSIST_KEY_CUSTOM_WEATHER = 11,
+  PERSIST_KEY_CUSTOM_TIME = 12,
+  PERSIST_KEY_CUSTOM_BODY = 13,
+  PERSIST_KEY_CUSTOM_STEP = 14,
+  PERSIST_KEY_CUSTOM_BATTERY = 15,
+};
+
+enum {
+  CUSTOM_DATE_DEFAULT = 0xFFFFFF,
+  CUSTOM_WEATHER_DEFAULT = 0xFFAA00,
+  CUSTOM_TIME_DEFAULT = 0x000000,
+  CUSTOM_BODY_DEFAULT = 0xFF5500,
+  CUSTOM_STEP_DEFAULT = 0xAA55FF,
+  CUSTOM_BATTERY_DEFAULT = 0xAA55FF,
 };
 
 enum {
@@ -88,6 +107,7 @@ enum {
   THEME_AMBER_LCD,
   THEME_MONOCHROME,
   THEME_PURPLE_PIXEL,
+  THEME_CUSTOM,
   THEME_COUNT,
 };
 
@@ -175,7 +195,45 @@ static const ColorTheme s_color_themes[THEME_COUNT] = {
   },
 };
 
+static ColorTheme s_custom_theme;
+static GColor s_custom_date;
+static GColor s_custom_weather;
+static GColor s_custom_time;
+
+static bool prv_is_custom(void) {
+  return s_color_theme == THEME_CUSTOM;
+}
+
+static int32_t prv_clamp_hex(int32_t v) {
+  if (v < 0x000000 || v > 0xFFFFFF) {
+    return 0x000000;
+  }
+  return v;
+}
+
+static void prv_rebuild_custom_theme(void) {
+  s_custom_theme.background = GColorPastelYellow;
+  s_custom_theme.body = GColorFromHEX((uint32_t)s_custom_hex[3]);
+  s_custom_theme.accent = GColorFromHEX((uint32_t)s_custom_hex[0]);
+  s_custom_theme.battery_frame = GColorPastelYellow;
+  s_custom_theme.battery_bar = GColorFromHEX((uint32_t)s_custom_hex[5]);
+  s_custom_theme.ink = GColorBlack;
+  s_custom_theme.battery_status = false;
+  s_custom_theme.battery_low = GColorBlack;
+  s_custom_theme.battery_mid = GColorBlack;
+  s_custom_theme.battery_high = GColorBlack;
+  s_custom_theme.weather_condition_colors = false;
+  s_custom_theme.step_bar = GColorFromHEX((uint32_t)s_custom_hex[4]);
+  s_custom_theme.step_bar_dark = s_color_themes[THEME_NEUBRUTALISM].step_bar_dark;
+  s_custom_date = GColorFromHEX((uint32_t)s_custom_hex[0]);
+  s_custom_weather = GColorFromHEX((uint32_t)s_custom_hex[1]);
+  s_custom_time = GColorFromHEX((uint32_t)s_custom_hex[2]);
+}
+
 static const ColorTheme *prv_theme(void) {
+  if (prv_is_custom()) {
+    return &s_custom_theme;
+  }
   return &s_color_themes[s_color_theme < THEME_COUNT ? s_color_theme : THEME_NEUBRUTALISM];
 }
 
@@ -405,6 +463,12 @@ static void prv_send_settings(void) {
   dict_write_uint8(iter, MESSAGE_KEY_BARS_MODE, s_bars_mode);
   dict_write_uint8(iter, MESSAGE_KEY_WEATHER_ENABLED, s_weather_enabled ? 1 : 0);
   dict_write_uint8(iter, MESSAGE_KEY_WEATHER_UNITS, s_weather_units);
+  dict_write_int32(iter, MESSAGE_KEY_CUSTOM_DATE, s_custom_hex[0]);
+  dict_write_int32(iter, MESSAGE_KEY_CUSTOM_WEATHER, s_custom_hex[1]);
+  dict_write_int32(iter, MESSAGE_KEY_CUSTOM_TIME, s_custom_hex[2]);
+  dict_write_int32(iter, MESSAGE_KEY_CUSTOM_BODY, s_custom_hex[3]);
+  dict_write_int32(iter, MESSAGE_KEY_CUSTOM_STEP, s_custom_hex[4]);
+  dict_write_int32(iter, MESSAGE_KEY_CUSTOM_BATTERY, s_custom_hex[5]);
   result = app_message_outbox_send();
   if (result != APP_MSG_OK) {
     APP_LOG(APP_LOG_LEVEL_WARNING, "Could not send settings sync: %d", result);
@@ -426,7 +490,44 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
       s_color_theme = theme;
       persist_write_int(PERSIST_KEY_COLOR_THEME, s_color_theme);
       window_set_background_color(s_window, prv_theme()->background);
-      text_layer_set_text_color(s_date_layer, prv_theme()->ink);
+      text_layer_set_text_color(s_date_layer, prv_is_custom() ? s_custom_time : prv_theme()->ink);
+      if (s_background_layer) {
+        layer_mark_dirty(s_background_layer);
+      }
+      if (s_bars_layer) {
+        layer_mark_dirty(s_bars_layer);
+      }
+      if (s_time_layer) {
+        layer_mark_dirty(s_time_layer);
+      }
+    }
+  }
+
+  const uint32_t custom_keys[6] = {
+    MESSAGE_KEY_CUSTOM_DATE, MESSAGE_KEY_CUSTOM_WEATHER, MESSAGE_KEY_CUSTOM_TIME,
+    MESSAGE_KEY_CUSTOM_BODY, MESSAGE_KEY_CUSTOM_STEP, MESSAGE_KEY_CUSTOM_BATTERY,
+  };
+  static const int custom_persist[6] = {
+    PERSIST_KEY_CUSTOM_DATE, PERSIST_KEY_CUSTOM_WEATHER, PERSIST_KEY_CUSTOM_TIME,
+    PERSIST_KEY_CUSTOM_BODY, PERSIST_KEY_CUSTOM_STEP, PERSIST_KEY_CUSTOM_BATTERY,
+  };
+  bool custom_changed = false;
+  for (int i = 0; i < 6; i++) {
+    Tuple *t = dict_find(iter, custom_keys[i]);
+    if (t) {
+      const int32_t v = prv_clamp_hex(t->value->int32);
+      if (v != s_custom_hex[i]) {
+        s_custom_hex[i] = v;
+        persist_write_int(custom_persist[i], v);
+        custom_changed = true;
+      }
+    }
+  }
+  if (custom_changed) {
+    prv_rebuild_custom_theme();
+    if (prv_is_custom()) {
+      window_set_background_color(s_window, prv_theme()->background);
+      text_layer_set_text_color(s_date_layer, s_custom_time);
       if (s_background_layer) {
         layer_mark_dirty(s_background_layer);
       }
@@ -676,27 +777,31 @@ static void prv_background_update_proc(Layer *layer, GContext *ctx) {
 
   // Polygon for 200px wide canvases
   if (w == 200 && s_polygon_200) {
-    graphics_context_set_fill_color(ctx, GColorWhite);
+    graphics_context_set_fill_color(ctx, prv_is_custom() ? s_custom_date : GColorWhite);
     gpath_draw_filled(ctx, s_polygon_200);
     graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_200.points, s_polygon_info_200.num_points, 4);
 
     // Weather bubble: condition-colored fill, black border, mirrors the date bubble
     if (s_weather_enabled || !s_bt_connected) {
-      graphics_context_set_fill_color(ctx, prv_weather_bubble_color(theme, s_weather_available));
+      graphics_context_set_fill_color(
+          ctx, prv_is_custom() ? s_custom_weather
+                               : prv_weather_bubble_color(theme, s_weather_available));
       gpath_draw_filled(ctx, s_polygon_200_weather);
       graphics_context_set_fill_color(ctx, theme->ink);
       prv_draw_axis_aligned_outline(ctx, s_polygon_info_200_weather.points, s_polygon_info_200_weather.num_points, 4);
     }
   } else if (s_polygon_144) {
-    graphics_context_set_fill_color(ctx, GColorWhite);
+    graphics_context_set_fill_color(ctx, prv_is_custom() ? s_custom_date : GColorWhite);
     gpath_draw_filled(ctx, s_polygon_144);
     graphics_context_set_fill_color(ctx, theme->ink);
     prv_draw_axis_aligned_outline(ctx, s_polygon_info_144.points, s_polygon_info_144.num_points, 4);
 
     // Weather bubble: condition-colored fill, black border, mirrors the date bubble
     if (s_weather_enabled || !s_bt_connected) {
-      graphics_context_set_fill_color(ctx, prv_weather_bubble_color(theme, s_weather_available));
+      graphics_context_set_fill_color(
+          ctx, prv_is_custom() ? s_custom_weather
+                               : prv_weather_bubble_color(theme, s_weather_available));
       gpath_draw_filled(ctx, s_polygon_144_weather);
       graphics_context_set_fill_color(ctx, theme->ink);
       prv_draw_axis_aligned_outline(ctx, s_polygon_info_144_weather.points, s_polygon_info_144_weather.num_points, 4);
@@ -786,7 +891,7 @@ static void prv_time_update_proc(Layer *layer, GContext *ctx) {
   const int16_t start_x = (bounds.size.w - total_width) / 2;
   const int16_t start_y = (bounds.size.h - glyph_height) / 2;
 
-  graphics_context_set_fill_color(ctx, theme->ink);
+  graphics_context_set_fill_color(ctx, prv_is_custom() ? s_custom_time : theme->ink);
 
   int16_t cursor_x = start_x;
   for (size_t i = 0; i < time_len; i++) {
@@ -844,7 +949,7 @@ static void prv_window_load(Window *window) {
 
   s_date_layer = text_layer_create(GRect(date_x, date_y, date_w, date_h));
   text_layer_set_background_color(s_date_layer, GColorClear);
-  text_layer_set_text_color(s_date_layer, prv_theme()->ink);
+  text_layer_set_text_color(s_date_layer, prv_is_custom() ? s_custom_time : prv_theme()->ink);
   text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
 
   // Weather bubble mirrors the date bubble on the left of the time box
@@ -944,6 +1049,20 @@ static void prv_init(void) {
   if (s_color_theme >= THEME_COUNT) {
     s_color_theme = THEME_NEUBRUTALISM;
   }
+  static const int32_t custom_defaults[6] = {
+    CUSTOM_DATE_DEFAULT, CUSTOM_WEATHER_DEFAULT, CUSTOM_TIME_DEFAULT,
+    CUSTOM_BODY_DEFAULT, CUSTOM_STEP_DEFAULT, CUSTOM_BATTERY_DEFAULT,
+  };
+  static const int custom_persist_keys[6] = {
+    PERSIST_KEY_CUSTOM_DATE, PERSIST_KEY_CUSTOM_WEATHER, PERSIST_KEY_CUSTOM_TIME,
+    PERSIST_KEY_CUSTOM_BODY, PERSIST_KEY_CUSTOM_STEP, PERSIST_KEY_CUSTOM_BATTERY,
+  };
+  for (int i = 0; i < 6; i++) {
+    s_custom_hex[i] = persist_exists(custom_persist_keys[i])
+        ? prv_clamp_hex(persist_read_int(custom_persist_keys[i]))
+        : custom_defaults[i];
+  }
+  prv_rebuild_custom_theme();
   s_daily_step_goal = persist_exists(PERSIST_KEY_DAILY_STEP_GOAL)
       ? persist_read_int(PERSIST_KEY_DAILY_STEP_GOAL)
       : DAILY_STEP_GOAL_DEFAULT;
@@ -993,7 +1112,7 @@ static void prv_init(void) {
   tick_timer_service_subscribe(MINUTE_UNIT, prv_tick_handler);
 
   app_message_register_inbox_received(prv_inbox_received);
-  app_message_open(64, 64);
+  app_message_open(256, 256);
 }
 
 static void prv_deinit(void) {

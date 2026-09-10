@@ -49,7 +49,13 @@
       "WEATHER_ENABLED",
       "WEATHER_TEMP",
       "WEATHER_UNITS",
-      "WEATHER_CODE"
+      "WEATHER_CODE",
+      "CUSTOM_DATE",
+      "CUSTOM_WEATHER",
+      "CUSTOM_TIME",
+      "CUSTOM_BODY",
+      "CUSTOM_STEP",
+      "CUSTOM_BATTERY"
     ],
     "resources": {
       "media": [
