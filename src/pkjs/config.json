@@ -40,7 +40,7 @@
       {
         "type": "text",
         "id": "custom-preview",
-        "defaultValue": "<canvas id=\"custom-preview-canvas\" width=\"200\" height=\"60\" style=\"width:100%;image-rendering:pixelated;border:1px solid #888\"></canvas>"
+        "defaultValue": "<canvas id=\"custom-preview-canvas\" width=\"144\" height=\"168\" style=\"width:100%;max-width:220px;image-rendering:pixelated;border:1px solid #888\"></canvas>"
       },
       {
         "type": "color",

@@ -491,6 +491,7 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
       persist_write_int(PERSIST_KEY_COLOR_THEME, s_color_theme);
       window_set_background_color(s_window, prv_theme()->background);
       text_layer_set_text_color(s_date_layer, prv_is_custom() ? s_custom_time : prv_theme()->ink);
+      text_layer_set_text_color(s_weather_layer, prv_is_custom() ? s_custom_time : GColorBlack);
       if (s_background_layer) {
         layer_mark_dirty(s_background_layer);
       }
@@ -528,6 +529,7 @@ static void prv_inbox_received(DictionaryIterator *iter, void *context) {
     if (prv_is_custom()) {
       window_set_background_color(s_window, prv_theme()->background);
       text_layer_set_text_color(s_date_layer, s_custom_time);
+      text_layer_set_text_color(s_weather_layer, s_custom_time);
       if (s_background_layer) {
         layer_mark_dirty(s_background_layer);
       }
@@ -957,7 +959,7 @@ static void prv_window_load(Window *window) {
   const int16_t weather_y = is_200 ? 0 : 3;
   s_weather_layer = text_layer_create(GRect(weather_x, weather_y, date_w, date_h));
   text_layer_set_background_color(s_weather_layer, GColorClear);
-  text_layer_set_text_color(s_weather_layer, GColorBlack);
+  text_layer_set_text_color(s_weather_layer, prv_is_custom() ? s_custom_time : GColorBlack);
   text_layer_set_text_alignment(s_weather_layer, GTextAlignmentCenter);
 
   const uint32_t font_res = is_200 ? RESOURCE_ID_FONT_JERSEY_38 : RESOURCE_ID_FONT_JERSEY_25;

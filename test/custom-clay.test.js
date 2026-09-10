@@ -67,4 +67,36 @@ describe('custom-clay', () => {
     expect(themeItem.on).toHaveBeenCalledWith('change', expect.any(Function));
     expect(colorItems.CUSTOM_BODY.on).toHaveBeenCalledWith('change', expect.any(Function));
   });
+
+  it('paints the preview with the current custom colors', () => {
+    const { config, handlers, colorItems } = makeConfig(6);
+    const styles = [];
+    let rects = 0;
+    const ctx = {
+      set fillStyle(v) { styles.push(v); },
+      get fillStyle() { return ''; },
+      fillRect() { rects++; },
+      beginPath() {},
+      moveTo() {},
+      lineTo() {},
+      closePath() {},
+      fill() {},
+      fillText() {},
+    };
+    global.document = {
+      getElementById: jest.fn(() => ({ getContext: () => ctx })),
+    };
+    try {
+      customClay.call(config, {});
+      handlers.afterBuild();
+      colorItems.CUSTOM_BODY._value = 0xff0000;
+      const changeHandler = colorItems.CUSTOM_BODY.on.mock.calls[0][1];
+      changeHandler();
+      expect(styles).toContain('#ff0000');
+      expect(styles).toContain('#ffffff');
+      expect(rects).toBeGreaterThan(50);
+    } finally {
+      delete global.document;
+    }
+  });
 });
