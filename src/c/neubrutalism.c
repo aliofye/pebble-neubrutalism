@@ -41,7 +41,7 @@ static AppTimer *s_debug_cycle_timer;
 static int s_debug_weather_index;
 static int s_debug_battery_index;
 static const int s_debug_weather_codes[] = {0, 3, 51, 71, 95};
-static const int s_debug_battery_percents[] = {10, 35, 90};
+static const int s_debug_battery_percents[] = {10, 30, 90};
 #endif
 
 static GBitmap *s_bt_icon_bitmap;
@@ -594,10 +594,10 @@ static GColor prv_battery_color(const ColorTheme *theme, int percent) {
   if (!theme->battery_status) {
     return theme->battery_bar;
   }
-  if (percent < 20) {
+  if (percent <= 10) {
     return theme->battery_low;
   }
-  if (percent < 50) {
+  if (percent <= 30) {
     return theme->battery_mid;
   }
   return theme->battery_high;

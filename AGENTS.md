@@ -36,6 +36,9 @@ pebble clean
 # Install the app on specific emulator
 pebble install --emulator basalt
 
+# Install the app on phone (default - always use this when user says "install on my phone")
+pebble install --phone
+
 # Screenshot the running emulator
 pebble screenshot --scale 6 --no-open screenshot.png
 ```
