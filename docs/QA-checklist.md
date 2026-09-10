@@ -45,6 +45,13 @@ emulator and/or a real watch after any watch-side change.
       Purple Pixel) renders with no black-on-black or white-on-white anywhere: clock,
       frame, polygon accent, and bars.
 - [ ] Switching theme while the watchface is showing updates immediately on sync.
+- [ ] Custom theme at defaults matches Neubrutalism except the battery bar, which
+      is flat lavender instead of status green (basalt screenshot).
+- [ ] Each of the 6 Custom pickers recolors exactly its target, nothing else.
+- [ ] Custom section hides for themes 0-5, shows for Custom.
+- [ ] Preview canvas repaints on picker input without saving.
+- [ ] Aplite screenshot legible (B&W dither, bars visible).
+- [ ] Upgrade from old install keeps working (missing persist keys → defaults).
 
 ## Platforms
 - [ ] Run on both a 200px (emery) and a 144px (basalt/aplite/diorite/flint) display:
